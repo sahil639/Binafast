@@ -16,6 +16,7 @@ try {
   if (p.lang === "vi") document.documentElement.lang = "vi";
 } catch (e) {}
 </script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -86,8 +87,8 @@ try {
 
   <section id="v-plan" class="sec" style="gap:16px">
     <div class="hero">
-      <img class="hero-cats" src="assets/hero-cats.png" alt="" hidden onload="this.hidden=false">
-      <h2 class="hero-name"><img src="assets/icons/globe.png" alt="" width="34" height="34"><span id="hero-name"></span></h2>
+      <img class="hero-cats" src="assets/hero-cats.png" alt="" width="115" height="140">
+      <h2 class="hero-name"><img id="hero-flag" src="assets/icons/globe.png" alt="" width="34" height="34"><span id="hero-name"></span></h2>
       <p class="hero-dates" id="hero-dates"></p>
       <p class="hero-total num" id="hero-total">0</p>
       <p class="hero-conv" id="hero-conv" hidden><span data-i18n="hero.conv"></span> <b id="hero-conv-v"></b></p>
@@ -126,6 +127,7 @@ try {
     <form id="trip-form" class="sec card" style="gap:12px">
       <h2 data-i18n="trip.details"></h2>
       <label class="field"><span data-i18n="trip.name"></span><input id="t-name" maxlength="80" data-i18n-ph="trip.name.ph"></label>
+      <div class="field"><span data-i18n="trip.place"></span><button type="button" class="placebtn" id="t-place"><img id="t-place-flag" alt="" hidden width="28" height="21"><span id="t-place-name"></span></button></div>
       <div class="grid2">
         <label class="field"><span data-i18n="trip.start"></span><input id="t-start" type="date"></label>
         <label class="field"><span data-i18n="trip.end"></span><input id="t-end" type="date"></label>
@@ -152,6 +154,19 @@ try {
   <a href="#trip"><img src="assets/icons/ship.png" alt="" width="32" height="32"><i data-i18n="tab.trip"></i></a>
 </nav>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+
+
+<!-- Choose a location on the map -->
+<dialog id="map-dlg" aria-labelledby="map-title">
+  <div class="dbody">
+    <div class="head"><h2 id="map-title" data-i18n="map.title"></h2><button class="btn quiet" id="map-close" type="button" data-i18n="close"></button></div>
+    <form id="map-search" class="inline"><input id="map-q" type="search" maxlength="80" autocomplete="off" data-i18n-ph="map.search.ph"><button class="btn" type="submit" data-i18n="map.search"></button></form>
+    <div id="map-results" class="map-results" hidden></div>
+    <div id="map" class="map"></div>
+    <p class="msg" id="map-msg"></p>
+    <div class="actions"><button class="btn quiet" id="map-clear" type="button" data-i18n="map.clear"></button><span class="spacer"></span><button class="btn primary" id="map-use" type="button" disabled data-i18n="map.use"></button></div>
+  </div>
+</dialog>
 
 <!-- Add / edit item -->
 <dialog id="dlg" aria-labelledby="dlg-title">
@@ -270,6 +285,7 @@ try {
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="i18n.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

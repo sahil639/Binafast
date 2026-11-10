@@ -140,6 +140,81 @@
   }
   function visibleItems() { return prefs.showCancelled ? items : items.filter(function (it) { return it.status !== "cancelled"; }); }
 
+  /* ---------- trip location (map picker) ---------- */
+  var placeDraft = null, map = null, marker = null, mapPick = null, mapSeq = 0;
+  function validPlace(x) { return !!x && typeof x === "object" && typeof x.name === "string" && x.name && isFinite(x.lat) && isFinite(x.lng); }
+  function flagURL(cc, w) { return /^[a-z]{2}$/.test(cc || "") ? "https://flagcdn.com/w" + w + "/" + cc + ".png" : ""; }
+  function showPlaceField() {
+    var f = $("t-place-flag"), u = placeDraft ? flagURL(placeDraft.cc, 40) : "";
+    $("t-place-name").textContent = placeDraft ? placeDraft.name : t("trip.place.none");
+    $("t-place").classList.toggle("empty", !placeDraft);
+    f.hidden = !u; if (u) f.src = u;
+  }
+  var GEO = "https://nominatim.openstreetmap.org/";
+  function placeName(a, fallback) {
+    a = a || {};
+    return a.city || a.town || a.village || a.municipality || a.county || a.state || fallback || a.country || "";
+  }
+  function mapSay(text) { $("map-msg").textContent = text || ""; }
+  function setPick(pk) {
+    mapPick = pk;
+    $("map-use").disabled = !pk;
+    if (pk) mapSay(pk.name + (pk.country ? ", " + pk.country : ""));
+    if (map && pk && window.L) {
+      if (!marker) marker = L.marker([pk.lat, pk.lng], { icon: L.icon({ iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png", iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png", shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png", iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(map);
+      else marker.setLatLng([pk.lat, pk.lng]);
+    }
+  }
+  function pickAt(lat, lng) {
+    var seq = ++mapSeq;
+    setPick(null); mapSay(t("map.looking"));
+    if (map && window.L) { if (!marker) setPick({ name: "…", lat: lat, lng: lng }); else marker.setLatLng([lat, lng]); $("map-use").disabled = true; mapSay(t("map.looking")); }
+    fetch(GEO + "reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=" + prefs.lang + "&lat=" + lat + "&lon=" + lng)
+      .then(function (r) { return r.json(); }).then(function (j) {
+        if (seq !== mapSeq) return;
+        var a = j && j.address, name = a ? placeName(a, j.name) : "";
+        if (!name) { $("map-use").disabled = true; mapSay(t("map.nores")); return; }
+        setPick({ name: name, cc: String(a.country_code || "").toLowerCase(), country: a.country || "", lat: +lat.toFixed(4), lng: +lng.toFixed(4) });
+      }).catch(function () { if (seq === mapSeq) { $("map-use").disabled = true; mapSay(t("map.fail")); } });
+  }
+  function openMap() {
+    var d = $("map-dlg"); $("map-q").value = ""; $("map-results").hidden = true; mapPick = null; $("map-use").disabled = true; mapSay(t("map.tap"));
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    $("map-clear").hidden = !placeDraft;
+    if (!window.L) { mapSay(t("map.nomap")); return; }
+    var has = placeDraft, c = has ? [placeDraft.lat, placeDraft.lng] : [16, 106];
+    if (!map) {
+      map = L.map("map", { worldCopyJump: true }).setView(c, has ? 9 : 5);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+      map.on("click", function (e) { pickAt(e.latlng.lat, e.latlng.lng); });
+    } else map.setView(c, has ? 9 : map.getZoom());
+    if (marker) { marker.remove(); marker = null; }
+    setTimeout(function () { map.invalidateSize(); }, 80);
+    if (has) setPick({ name: placeDraft.name, cc: placeDraft.cc, country: "", lat: placeDraft.lat, lng: placeDraft.lng });
+  }
+  function searchPlaces(q) {
+    var box = $("map-results"); box.hidden = true; box.innerHTML = ""; mapSay(t("map.looking"));
+    fetch(GEO + "search?format=jsonv2&addressdetails=1&limit=6&accept-language=" + prefs.lang + "&q=" + encodeURIComponent(q))
+      .then(function (r) { return r.json(); }).then(function (list) {
+        if (!Array.isArray(list) || !list.length) { mapSay(t("map.nores")); return; }
+        mapSay(t("map.tap"));
+        list.forEach(function (r) {
+          var b = document.createElement("button"); b.type = "button"; b.className = "map-res";
+          b.textContent = r.display_name || r.name || "";
+          b.addEventListener("click", function () {
+            var lat = parseFloat(r.lat), lng = parseFloat(r.lon), a = r.address || {};
+            if (!isFinite(lat) || !isFinite(lng)) return;
+            box.hidden = true;
+            if (map) map.setView([lat, lng], 11);
+            setPick({ name: placeName(a, r.name) || r.name || "", cc: String(a.country_code || "").toLowerCase(), country: a.country || "", lat: +lat.toFixed(4), lng: +lng.toFixed(4) });
+          });
+          box.appendChild(b);
+        });
+        box.hidden = false;
+      }).catch(function () { mapSay(t("map.fail")); });
+  }
+  function closeMap() { var d = $("map-dlg"); if (d.close) d.close(); else d.removeAttribute("open"); }
+
   /* ---------- currency conversion (free public rates, cached 12h) ---------- */
   var rates = {};
   function loadRates(base) {
@@ -367,7 +442,9 @@
     if (!f.contains(document.activeElement) && !f.dataset.dirty) {
       $("t-name").value = trip.name || ""; $("t-start").value = isDate(trip.start) ? trip.start : "";
       $("t-end").value = isDate(trip.end) ? trip.end : ""; $("t-cur").value = trip.currency || "";
+      placeDraft = validPlace(trip.place) ? { name: trip.place.name, cc: trip.place.cc || "", lat: trip.place.lat, lng: trip.place.lng } : null;
     }
+    showPlaceField();
     $("people").innerHTML = Object.keys(members).sort(function (a, b) { return memberName(a).localeCompare(memberName(b)); }).map(function (u) {
       return '<div class="person">' + avatar(u, memberName(u), "lg") + "<span>" + esc(memberName(u)) + (user && u === user.uid ? " (" + esc(t("trip.you")) + ")" : "") + "</span></div>";
     }).join("");
@@ -380,7 +457,11 @@
     Array.prototype.forEach.call(document.querySelectorAll(".tabs a"), function (a) {
       if (a.getAttribute("href") === "#" + v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("hero-name").textContent = !ready.trip ? t("loading") : (trip.name || t("trip.untitled"));
+    var pl = validPlace(trip.place) ? trip.place : null, flag = pl ? flagURL(pl.cc, 80) : "";
+    $("hero-name").textContent = !ready.trip ? t("loading") : (pl ? pl.name : (trip.name || t("trip.untitled")));
+    var hf = $("hero-flag"), want = flag || "assets/icons/globe.png";
+    if (hf.getAttribute("src") !== want) hf.src = want;
+    hf.classList.toggle("flag", !!flag);
     $("hero-dates").textContent = ready.trip && isDate(trip.start) && isDate(trip.end) ? fmtDay(trip.start) + " – " + fmtDay(trip.end) : "";
     $("hero-dates").hidden = !$("hero-dates").textContent;
     var totalNum = sum(items);
@@ -682,10 +763,22 @@
     if (s && en && diffDays(s, en) > 120) { msg.textContent = t("e.long"); return; }
     var btn = $("t-save"); btn.disabled = true;
     chains.trip = (chains.trip || Promise.resolve()).then(function () {
-      return saveTrip({ name: $("t-name").value.trim(), start: s, end: en, currency: $("t-cur").value.trim().toUpperCase() });
+      return saveTrip({ name: $("t-name").value.trim(), start: s, end: en, currency: $("t-cur").value.trim().toUpperCase(), place: placeDraft });
     }).then(function () { delete $("trip-form").dataset.dirty; msg.className = "msg ok"; msg.textContent = t("saved"); selDay = null; })
       .catch(function (err) { msg.textContent = t("e.nosave"); writeFailed(err); }).then(function () { btn.disabled = false; });
   });
+  $("t-place").addEventListener("click", openMap);
+  $("map-close").addEventListener("click", closeMap);
+  $("map-dlg").addEventListener("click", function (e) { if (e.target === $("map-dlg")) closeMap(); });
+  $("map-search").addEventListener("submit", function (e) { e.preventDefault(); var q = $("map-q").value.trim(); if (q) searchPlaces(q); });
+  $("map-use").addEventListener("click", function () {
+    if (!mapPick || !mapPick.name) return;
+    placeDraft = { name: mapPick.name, cc: mapPick.cc || "", lat: mapPick.lat, lng: mapPick.lng };
+    $("trip-form").dataset.dirty = "1";
+    if (!$("t-name").value.trim()) $("t-name").value = placeDraft.name;
+    showPlaceField(); closeMap();
+  });
+  $("map-clear").addEventListener("click", function () { placeDraft = null; $("trip-form").dataset.dirty = "1"; showPlaceField(); closeMap(); });
   window.addEventListener("hashchange", render);
   setInterval(positionNow, 60000);
 
