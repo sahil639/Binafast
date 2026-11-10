@@ -7,7 +7,7 @@
 <title>Binafast</title>
 <link rel="icon" href="logo.jpg">
 <link rel="apple-touch-icon" href="logo.jpg">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,600;0,700;0,800;0,900;1,900&display=swap">
 <script>
 /* apply the saved theme and language before first paint */
 try {
@@ -73,10 +73,9 @@ try {
 <div id="app" hidden>
 <header class="top">
   <div class="wrap topbar">
-    <img class="mini" src="logo.jpg" alt="">
     <h1>Binafast</h1>
     <div class="right">
-      <button class="iconbtn" id="open-settings" type="button" data-i18n-aria="settings" aria-label="Settings">⚙️</button>
+      <button class="iconbtn" id="open-settings" type="button" data-i18n-aria="settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn primary" id="add" type="button">+ <span data-i18n="add"></span></button>
     </div>
   </div>
@@ -87,11 +86,11 @@ try {
 
   <section id="v-plan" class="sec" style="gap:16px">
     <div class="hero">
-      <p class="hero-label" id="sub"></p>
-      <div class="hero-num"><span class="em" aria-hidden="true">🧳</span><span id="hero-total">0</span></div>
-      <p class="hero-cap" data-i18n="hero.cap"></p>
-      <div class="prog" role="img" aria-labelledby="prog-cap"><i id="prog-fill"></i></div>
-      <p class="prog-cap" id="prog-cap"></p>
+      <img class="hero-cats" src="assets/hero-cats.png" alt="" hidden onload="this.hidden=false">
+      <h2 class="hero-name"><img src="assets/icons/globe.png" alt="" width="34" height="34"><span id="hero-name"></span></h2>
+      <p class="hero-dates" id="hero-dates"></p>
+      <p class="hero-total num" id="hero-total">0</p>
+      <p class="hero-conv" id="hero-conv" hidden><span data-i18n="hero.conv"></span> <b id="hero-conv-v"></b></p>
     </div>
     <div class="days" id="days" role="group"></div>
     <div id="plan-body" class="sec" style="gap:16px"></div>
@@ -147,10 +146,10 @@ try {
 </main>
 
 <nav class="tabs" aria-label="Sections">
-  <a href="#plan"><span aria-hidden="true">🗓️</span><i style="font-style:normal" data-i18n="tab.plan"></i></a>
-  <a href="#items"><span aria-hidden="true">🧾</span><i style="font-style:normal" data-i18n="tab.items"></i></a>
-  <a href="#costs"><span aria-hidden="true">💰</span><i style="font-style:normal" data-i18n="tab.costs"></i></a>
-  <a href="#trip"><span aria-hidden="true">✏️</span><i style="font-style:normal" data-i18n="tab.trip"></i></a>
+  <a href="#plan"><img src="assets/icons/map.png" alt="" width="32" height="32"><i data-i18n="tab.plan"></i></a>
+  <a href="#items"><img src="assets/icons/passport.png" alt="" width="32" height="32"><i data-i18n="tab.items"></i></a>
+  <a href="#costs"><img src="assets/icons/wallet.png" alt="" width="32" height="32"><i data-i18n="tab.costs"></i></a>
+  <a href="#trip"><img src="assets/icons/ship.png" alt="" width="32" height="32"><i data-i18n="tab.trip"></i></a>
 </nav>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -251,6 +250,7 @@ try {
       <label class="set-row"><span data-i18n="set.cancelled"></span><input class="sw" type="checkbox" id="set-cancelled"></label>
       <label class="set-row"><span data-i18n="set.auto"></span><input class="sw" type="checkbox" id="set-auto"></label>
       <p class="note" data-i18n="set.auto.note"></p>
+      <label class="set-row"><span data-i18n="set.convert"></span><select id="set-convert"><option value="" data-i18n="set.convert.off"></option><option>USD</option><option>EUR</option><option>GBP</option><option>VND</option><option>INR</option><option>JPY</option><option>KRW</option><option>THB</option><option>SGD</option><option>AUD</option></select></label>
     </div>
 
     <div class="set-sec">

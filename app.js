@@ -5,14 +5,17 @@
   var CATS = ["hotel", "food", "activity", "transport", "shopping", "other"];
   var STATUSES = ["planned", "booked", "done", "cancelled"];
   var MODES = ["Flight", "Train", "Bus", "Cab", "Ferry", "Bike", "Other"];
-  var CAT_ICON = { hotel: "🏨", food: "🍜", activity: "🎟️", transport: "🧭", shopping: "🛍️", other: "📌" };
-  var MODE_ICON = { Flight: "✈️", Train: "🚆", Bus: "🚌", Cab: "🚕", Ferry: "⛴️", Bike: "🛵" };
+  var CAT_ICON = { hotel: "hotel", food: "ramen", activity: "map", transport: "car", shopping: "cart", other: "globe" };
+  function ci(c, size) { size = size || 18; return '<img class="ci" src="assets/icons/' + (CAT_ICON[c] || "globe") + '.png" alt="" width="' + size + '" height="' + size + '">'; }
+  function emptyArt(cat, text, extra) {
+    return '<div class="empty-art"><img src="assets/empty/' + (CATS.indexOf(cat) >= 0 ? cat : "other") + '.png" alt="" width="350" height="240"><p>' + text + "</p>" + (extra || "") + "</div>";
+  }
   var HOUR_H = 52;
   var NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,19}$/u;
   var CODE_RE = /^[A-Za-z0-9]{16,40}$/;
 
   /* ---------- preferences (this device, mirrored to the account) ---------- */
-  var DEFAULTS = { theme: "system", lang: "en", time: "24", dayStart: 7, dayEnd: 22, showCancelled: true, autoRead: true };
+  var DEFAULTS = { theme: "system", lang: "en", time: "24", dayStart: 7, dayEnd: 22, showCancelled: true, autoRead: true, convert: "USD" };
   function cleanPrefs(p) {
     var o = {}; p = p || {};
     if (["system", "light", "dark"].indexOf(p.theme) >= 0) o.theme = p.theme;
@@ -22,6 +25,7 @@
     if (Number.isInteger(p.dayEnd) && p.dayEnd >= 12 && p.dayEnd <= 24) o.dayEnd = p.dayEnd;
     if (typeof p.showCancelled === "boolean") o.showCancelled = p.showCancelled;
     if (typeof p.autoRead === "boolean") o.autoRead = p.autoRead;
+    if (typeof p.convert === "string" && /^([A-Z]{3})?$/.test(p.convert)) o.convert = p.convert;
     return o;
   }
   var prefs = (function () {
@@ -136,11 +140,41 @@
   }
   function visibleItems() { return prefs.showCancelled ? items : items.filter(function (it) { return it.status !== "cancelled"; }); }
 
+  /* ---------- currency conversion (free public rates, cached 12h) ---------- */
+  var rates = {};
+  function loadRates(base) {
+    if (rates[base] !== undefined) return;
+    rates[base] = null;
+    try {
+      var c = JSON.parse(localStorage.getItem("binafast-rates-" + base) || "null");
+      if (c && Date.now() - c.t < 43200000 && c.r) { rates[base] = c.r; return; }
+    } catch (e) {}
+    fetch("https://open.er-api.com/v6/latest/" + base).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.rates) {
+        rates[base] = j.rates;
+        try { localStorage.setItem("binafast-rates-" + base, JSON.stringify({ t: Date.now(), r: j.rates })); } catch (e) {}
+        render();
+      }
+    }).catch(function () { delete rates[base]; });
+  }
+  function showConversion(total) {
+    var base = String(trip.currency || "").toUpperCase(), to = prefs.convert, el = $("hero-conv");
+    var ok = /^[A-Z]{3}$/.test(base) && to && to !== base && total > 0;
+    if (ok) loadRates(base);
+    var r = ok && rates[base] && rates[base][to];
+    el.hidden = !r;
+    if (r) {
+      var v = total * r;
+      try { $("hero-conv-v").textContent = new Intl.NumberFormat(loc(), { style: "currency", currency: to, maximumFractionDigits: v >= 100 ? 0 : 2 }).format(v); }
+      catch (e) { $("hero-conv-v").textContent = v.toFixed(2) + " " + to; }
+    }
+  }
+
   /* ---------- rows ---------- */
   function rowHTML(it, opts) {
     opts = opts || {};
     var catKey = CATS.indexOf(it.category) >= 0 ? it.category : "other";
-    var icon = catKey === "transport" ? (MODE_ICON[it.mode] || CAT_ICON.transport) : CAT_ICON[catKey];
+    var icon = ci(catKey, 36);
     var meta = [catName(catKey)];
     if (catKey === "transport") {
       var route = [it.from, it.to].filter(Boolean).join(" → ");
@@ -191,7 +225,7 @@
     var catKey = CATS.indexOf(it.category) >= 0 ? it.category : "other";
     var sub = "";
     if (catKey === "hotel") sub = it.date === d ? t("stay.in") : (it.endDate === d ? t("stay.out") : t("stay.tonight"));
-    return '<button type="button" class="chip c-' + catKey + " st-" + esc(it.status || "planned") + '" data-edit="' + esc(it.id) + '">' + CAT_ICON[catKey] + " " + esc(it.name || "—") + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</button>";
+    return '<button type="button" class="chip c-' + catKey + " st-" + esc(it.status || "planned") + '" data-edit="' + esc(it.id) + '">' + ci(catKey, 16) + " " + esc(it.name || "—") + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</button>";
   }
   function timelineHTML(d, timed, today) {
     var ev = timed.map(function (it) {
@@ -239,8 +273,8 @@
     var body = $("plan-body");
     if (!ready.items || !ready.trip) { body.innerHTML = listHTML([], esc(unreachable ? t("b.unreachable") : t("loading"))); return; }
     if (!items.length && !days.length) {
-      body.innerHTML = '<div class="list"><div class="empty"><strong>' + esc(t("empty.title")) + "</strong><br>" + esc(t("empty.body")) +
-        '<br><a class="btn" href="#trip">' + esc(t("empty.set")) + '</a> <button class="btn primary" type="button" data-add="">' + esc(t("empty.add")) + "</button></div></div>";
+      body.innerHTML = emptyArt("transport", "<strong>" + esc(t("empty.title")) + "</strong><br>" + esc(t("empty.body")),
+        '<div class="actions"><a class="btn" href="#trip">' + esc(t("empty.set")) + '</a> <button class="btn primary" type="button" data-add="">' + esc(t("empty.add")) + "</button></div>");
       return;
     }
     if (selDay === "none") {
@@ -301,8 +335,8 @@
     });
     $("items-count").textContent = !ready.items ? "" : t("items.count", { n: list.length, m: items.length });
     $("items-total").textContent = list.length ? t("items.total", { x: money(sum(list)) }) : "";
-    $("items-body").innerHTML = listHTML(list.map(function (it) { return rowHTML(it, { showDate: true, showBy: true }); }),
-      esc(!ready.items ? (unreachable ? t("b.unreachable") : t("loading")) : (items.length ? t("items.nomatch") : t("items.none"))));
+    $("items-body").innerHTML = list.length ? listHTML(list.map(function (it) { return rowHTML(it, { showDate: true, showBy: true }); }), "")
+      : emptyArt(fc || "other", esc(!ready.items ? (unreachable ? t("b.unreachable") : t("loading")) : (items.length ? t("items.nomatch") : t("items.none"))));
   }
 
   function renderCosts() {
@@ -346,14 +380,12 @@
     Array.prototype.forEach.call(document.querySelectorAll(".tabs a"), function (a) {
       if (a.getAttribute("href") === "#" + v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    var sub = !ready.trip ? t("loading") : (trip.name || t("trip.untitled"));
-    if (ready.trip && isDate(trip.start) && isDate(trip.end)) sub += " · " + fmtDay(trip.start) + " – " + fmtDay(trip.end);
-    $("sub").textContent = sub;
-    var liveAll = items.filter(function (it) { return it.status !== "cancelled"; });
-    var sorted = liveAll.filter(function (it) { return it.status === "booked" || it.status === "done"; }).length;
-    $("hero-total").textContent = money(sum(items)) || "0";
-    $("prog-fill").style.width = (liveAll.length ? Math.round(sorted / liveAll.length * 100) : 0) + "%";
-    $("prog-cap").textContent = liveAll.length ? t("hero.progress", { n: sorted, m: liveAll.length }) : t("hero.empty");
+    $("hero-name").textContent = !ready.trip ? t("loading") : (trip.name || t("trip.untitled"));
+    $("hero-dates").textContent = ready.trip && isDate(trip.start) && isDate(trip.end) ? fmtDay(trip.start) + " – " + fmtDay(trip.end) : "";
+    $("hero-dates").hidden = !$("hero-dates").textContent;
+    var totalNum = sum(items);
+    $("hero-total").textContent = money(totalNum) || "0";
+    showConversion(totalNum);
     var b = $("banner");
     if (dead) { b.hidden = false; b.textContent = t("b.dead"); }
     else if (unreachable) { b.hidden = false; b.textContent = t("b.unreachable"); }
@@ -385,7 +417,7 @@
 
   function buildFormOptions() {
     var cur = (document.querySelector('input[name="i-cat"]:checked') || {}).value;
-    $("i-cats").innerHTML = CATS.map(function (c) { return '<label><input type="radio" name="i-cat" value="' + c + '"><span>' + esc(CAT_ICON[c] + " " + catName(c)) + "</span></label>"; }).join("");
+    $("i-cats").innerHTML = CATS.map(function (c) { return '<label><input type="radio" name="i-cat" value="' + c + '"><span>' + ci(c, 18) + " " + esc(catName(c)) + "</span></label>"; }).join("");
     setCat(cur || "activity");
     var mode = $("i-mode").value, st = $("i-status").value;
     $("i-mode").innerHTML = MODES.map(function (m) { return '<option value="' + m + '">' + esc(modeName(m)) + "</option>"; }).join("");
@@ -551,7 +583,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-pref]"), function (b) { b.setAttribute("aria-pressed", String(String(prefs[b.dataset.pref]) === b.dataset.val)); });
     $("set-start").innerHTML = hourOptions(0, 12); $("set-end").innerHTML = hourOptions(12, 24);
     $("set-start").value = String(prefs.dayStart); $("set-end").value = String(prefs.dayEnd);
-    $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
+    $("set-convert").value = prefs.convert || ""; $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
     var name = profile.username || "";
     $("set-av").outerHTML = avatar(user && user.uid, name, "lg").replace('class="av lg"', 'id="set-av" class="av lg"');
     $("set-uname").textContent = name; $("set-email").textContent = user && user.email ? user.email : "";
@@ -720,6 +752,7 @@
   $("set-start").addEventListener("change", function () { var v = +this.value; if (v < prefs.dayEnd) setPref("dayStart", v); else renderSettings(); });
   $("set-end").addEventListener("change", function () { var v = +this.value; if (v > prefs.dayStart) setPref("dayEnd", v); else renderSettings(); });
   $("set-cancelled").addEventListener("change", function () { setPref("showCancelled", this.checked); });
+  $("set-convert").addEventListener("change", function () { setPref("convert", this.value); });
   $("set-auto").addEventListener("change", function () { setPref("autoRead", this.checked); });
   $("set-name-save").addEventListener("click", changeName);
   $("set-export").addEventListener("click", exportCsv);
