@@ -740,7 +740,7 @@
         body: JSON.stringify({ url: link || undefined, image: pending ? pending.ai : undefined, lang: prefs.lang, today: todayISO(), tripStart: trip.start || null, tripEnd: trip.end || null, currency: trip.currency || null })
       });
     }).then(function (res) {
-      return res.json().catch(function () { return {}; }).then(function (j) { if (!res.ok) { var e = new Error("http"); e.status = res.status; throw e; } return j; });
+      return res.json().catch(function () { return {}; }).then(function (j) { if (!res.ok) { var e = new Error("http"); e.status = res.status; e.detail = j && j.detail; throw e; } return j; });
     }).then(function (j) {
       if (seq !== xhr.seq) return;
       var n = applyFields(j && j.fields ? j.fields : {});
@@ -750,7 +750,7 @@
       if (e && e.name === "AbortError" && !timedOut) return;
       var s = e && e.status, k = "smart.fail";
       if (s === 401 || s === 403) k = "smart.denied"; else if (s === 501) k = "smart.notset"; else if (s === 404 || s === 405) k = "smart.unavailable"; else if (s === 413) k = "smart.toobig"; else if (s === 429) k = "smart.rate";
-      setMsg(t(k), "err");
+      setMsg(t(k) + (e && e.detail ? " (" + e.detail + ")" : ""), "err");
     }).then(function () { clearTimeout(to); if (seq === xhr.seq) { xhr.ctl = null; busy = false; updateSmartUI(); } });
   }
   function maybeAutoLink() {

@@ -21,19 +21,19 @@ function webApiKey() {
 async function verify(req) {
   const h = String(req.headers.authorization || "");
   const tok = h.startsWith("Bearer ") ? h.slice(7) : "";
-  if (!tok) return null;
+  if (!tok) return { reason: "no sign-in token" };
   const key = webApiKey();
-  if (!key) return null;
+  if (!key) return { reason: "server could not read the Firebase key from config.js" };
   const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + encodeURIComponent(key), {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: tok })
   });
-  if (!r.ok) return null;
+  if (!r.ok) return { reason: "Firebase rejected the sign-in token (" + r.status + ")" };
   const j = await r.json();
   const u = j && j.users && j.users[0];
-  if (!u) return null;
+  if (!u) return { reason: "no user for this token" };
   const allow = String(process.env.ALLOWED_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
-  if (allow.length && allow.indexOf(String(u.email || "").toLowerCase()) < 0) return null;
-  return u;
+  if (allow.length && allow.indexOf(String(u.email || "").toLowerCase()) < 0) return { reason: "this email is not in ALLOWED_EMAILS" };
+  return { user: u };
 }
 
 function privateIp(ip) {
@@ -131,6 +131,14 @@ function parseJson(text) {
   return null;
 }
 
+async function upstream(who, r) {
+  let msg = "";
+  try { const j = await r.json(); msg = (j.error && (j.error.message || j.error.status)) || ""; } catch (e) {}
+  const e = new Error("llm");
+  e.detail = who + " " + r.status + (msg ? ": " + String(msg).replace(/key[=:]\s*\S+/gi, "key").slice(0, 200) : "");
+  return e;
+}
+
 async function callGemini(prompt, text, img) {
   const model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const parts = [{ text: prompt + (text ? "\n\n" + text : "") }];
@@ -141,7 +149,7 @@ async function callGemini(prompt, text, img) {
     body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", temperature: 0 } })
   });
   if (r.status === 429) { const e = new Error("rate"); e.status = 429; throw e; }
-  if (!r.ok) throw new Error("llm-" + r.status);
+  if (!r.ok) throw await upstream("gemini", r);
   const j = await r.json();
   const c = j.candidates && j.candidates[0];
   return c && c.content && c.content.parts ? c.content.parts.map((p) => p.text || "").join("") : "";
@@ -157,18 +165,23 @@ async function callAnthropic(prompt, text, img) {
     body: JSON.stringify({ model, max_tokens: 800, temperature: 0, messages: [{ role: "user", content }] })
   });
   if (r.status === 429) { const e = new Error("rate"); e.status = 429; throw e; }
-  if (!r.ok) throw new Error("llm-" + r.status);
+  if (!r.ok) throw await upstream("anthropic", r);
   const j = await r.json();
   return (j.content || []).map((p) => p.text || "").join("");
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "method" }); }
+  if (req.method === "GET") {
+    return res.status(200).json({ ok: true, gemini: !!process.env.GEMINI_API_KEY, anthropic: !!process.env.ANTHROPIC_API_KEY,
+      model: process.env.GEMINI_API_KEY ? (process.env.GEMINI_MODEL || "gemini-3.5-flash-lite") : (process.env.ANTHROPIC_API_KEY ? (process.env.ANTHROPIC_MODEL || "claude-haiku-5-5") : null),
+      firebaseKeyFound: !!webApiKey() });
+  }
+  if (req.method !== "POST") { res.setHeader("Allow", "GET, POST"); return res.status(405).json({ error: "method" }); }
   try {
     if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(501).json({ error: "not-configured" });
-    const user = await verify(req);
-    if (!user) return res.status(401).json({ error: "auth" });
+    const v = await verify(req);
+    if (!v.user) return res.status(401).json({ error: "auth", detail: v.reason });
     let b = req.body;
     if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = null; } }
     if (!b || typeof b !== "object") return res.status(400).json({ error: "body" });
@@ -197,7 +210,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ fields: clean(parseJson(raw)) });
   } catch (e) {
     if (e && e.status === 429) return res.status(429).json({ error: "rate" });
-    return res.status(502).json({ error: "failed" });
+    return res.status(502).json({ error: "failed", detail: (e && e.detail) || (e && e.name === "TimeoutError" ? "the AI took too long" : String((e && e.message) || "error").slice(0, 120)) });
   }
 };
 module.exports.config = { maxDuration: 30 };
