@@ -138,7 +138,7 @@ try {
         <label class="field"><span data-i18n="trip.start"></span><input id="t-start" type="date"></label>
         <label class="field"><span data-i18n="trip.end"></span><input id="t-end" type="date"></label>
       </div>
-      <label class="field"><span data-i18n="trip.cur"></span><input id="t-cur" maxlength="3" autocapitalize="characters" data-i18n-ph="trip.cur.ph"></label>
+      <label class="field"><span data-i18n="trip.cur"></span><select id="t-cur"></select></label>
       <div class="actions"><button class="btn primary" type="submit" id="t-save" data-i18n="trip.save"></button><p class="msg" id="t-msg"></p></div>
     </form>
     <div class="sec card">
@@ -281,11 +281,17 @@ try {
     </div>
 
     <div class="set-sec">
+      <h3 data-i18n="set.currency"></h3>
+      <label class="set-row"><span data-i18n="set.main"></span><select id="set-main"></select></label>
+      <label class="set-row"><span data-i18n="set.convert"></span><select id="set-convert"></select></label>
+      <p class="note" data-i18n="set.currency.note"></p>
+    </div>
+
+    <div class="set-sec">
       <h3 data-i18n="set.items"></h3>
       <label class="set-row"><span data-i18n="set.cancelled"></span><input class="sw" type="checkbox" id="set-cancelled"></label>
       <label class="set-row"><span data-i18n="set.auto"></span><input class="sw" type="checkbox" id="set-auto"></label>
       <p class="note" data-i18n="set.auto.note"></p>
-      <label class="set-row"><span data-i18n="set.convert"></span><select id="set-convert"><option value="" data-i18n="set.convert.off"></option><option>USD</option><option>EUR</option><option>GBP</option><option>VND</option><option>INR</option><option>JPY</option><option>KRW</option><option>THB</option><option>SGD</option><option>AUD</option></select></label>
     </div>
 
     <div class="set-sec">

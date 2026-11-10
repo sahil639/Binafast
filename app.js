@@ -46,6 +46,15 @@
   function stName(s) { return t("st." + (STATUSES.indexOf(s) >= 0 ? s : "planned")); }
   function modeName(m) { return MODES.indexOf(m) >= 0 ? t("mode." + m) : (m || ""); }
 
+  var CURS = ["USD", "EUR", "GBP", "VND", "INR", "JPY", "KRW", "THB", "SGD", "AUD", "CAD", "CNY", "HKD", "TWD", "MYR", "IDR", "PHP", "AED", "CHF", "NZD", "MXN", "BRL"];
+  function curName(c) { try { return new Intl.DisplayNames([prefs.lang === "vi" ? "vi-VN" : "en"], { type: "currency" }).of(c) || c; } catch (e) { return c; } }
+  function fillCur(el, val, blankLabel) {
+    val = String(val || "").toUpperCase();
+    var list = CURS.slice(); if (/^[A-Z]{3}$/.test(val) && list.indexOf(val) < 0) list.unshift(val);
+    el.innerHTML = (blankLabel != null ? '<option value="">' + esc(blankLabel) + "</option>" : "") +
+      list.map(function (c) { return '<option value="' + c + '">' + c + " – " + esc(curName(c)) + "</option>"; }).join("");
+    el.value = val;
+  }
   function applyStatic() {
     document.documentElement.lang = prefs.lang;
     Array.prototype.forEach.call(document.querySelectorAll("[data-i18n]"), function (el) { el.textContent = t(el.getAttribute("data-i18n")); });
@@ -441,7 +450,7 @@
     var f = $("trip-form");
     if (!f.contains(document.activeElement) && !f.dataset.dirty) {
       $("t-name").value = trip.name || ""; $("t-start").value = isDate(trip.start) ? trip.start : "";
-      $("t-end").value = isDate(trip.end) ? trip.end : ""; $("t-cur").value = trip.currency || "";
+      $("t-end").value = isDate(trip.end) ? trip.end : ""; fillCur($("t-cur"), trip.currency, "—");
       placeDraft = validPlace(trip.place) ? { name: trip.place.name, cc: trip.place.cc || "", lat: trip.place.lat, lng: trip.place.lng } : null;
     }
     showPlaceField();
@@ -765,7 +774,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-pref]"), function (b) { b.setAttribute("aria-pressed", String(String(prefs[b.dataset.pref]) === b.dataset.val)); });
     $("set-start").innerHTML = hourOptions(0, 12); $("set-end").innerHTML = hourOptions(12, 24);
     $("set-start").value = String(prefs.dayStart); $("set-end").value = String(prefs.dayEnd);
-    $("set-convert").value = prefs.convert || ""; $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
+    fillCur($("set-convert"), prefs.convert, t("set.convert.off")); fillCur($("set-main"), trip.currency, "—"); $("set-main").disabled = !ready.trip; $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
     var name = profile.username || "";
     $("set-av").outerHTML = avatar(user && user.uid, name, "lg").replace('class="av lg"', 'id="set-av" class="av lg"');
     $("set-uname").textContent = name; $("set-email").textContent = user && user.email ? user.email : "";
@@ -976,6 +985,11 @@
   $("set-end").addEventListener("change", function () { var v = +this.value; if (v > prefs.dayStart) setPref("dayEnd", v); else renderSettings(); });
   $("set-cancelled").addEventListener("change", function () { setPref("showCancelled", this.checked); });
   $("set-convert").addEventListener("change", function () { setPref("convert", this.value); });
+  $("set-main").addEventListener("change", function () {
+    var v = this.value;
+    if (!ready.trip) return;
+    saveTrip({ currency: v }).catch(writeFailed);
+  });
   $("set-auto").addEventListener("change", function () { setPref("autoRead", this.checked); });
   $("set-name-save").addEventListener("click", changeName);
   $("set-export").addEventListener("click", exportCsv);
