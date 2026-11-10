@@ -269,3 +269,38 @@ dialog #i-save { padding: 12px 28px }
 
 dialog form#map-search { flex-direction: row; padding: 0; gap: 8px }
 #map-search input { flex: 1 }
+
+/* brand link + hero trip button */
+.top h1 a { color: inherit; text-decoration: none }
+.hero-trip { all: unset; display: flex; align-items: center; gap: 8px; cursor: pointer; min-width: 0; border-radius: 8px }
+.hero-trip:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px }
+.hero-trip span { min-width: 0 }
+.hchev { flex: none; opacity: .6; margin-left: 2px }
+
+/* trips: cards + bottom sheet */
+.tcard { background: var(--surface); border: 2px solid transparent; border-radius: 16px; box-shadow: var(--shadow); overflow: hidden }
+.tcard.current { border-color: var(--card-line) }
+.thead { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer }
+.thead:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: 14px }
+.tcard.mini { width: 100%; display: flex }
+.tflag { width: 34px; height: 34px; object-fit: contain; flex: none }
+.tflag.flag { height: 26px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px rgba(0, 0, 0, .1) }
+.tt { flex: 1; min-width: 0; display: flex; flex-direction: column }
+.tt b { font-weight: 800; font-size: 17px; line-height: 1.25; overflow-wrap: anywhere }
+.tt small { color: var(--muted); font-size: 13px; font-weight: 600; overflow-wrap: anywhere }
+.pill { flex: none; background: var(--c-hotel-bg); color: var(--c-hotel-fg); font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 10px }
+.tchev { flex: none; color: var(--muted); transition: transform .2s }
+.tcard.open .tchev { transform: rotate(180deg) }
+.tcard.mini .tchev { display: none }
+.tbody { padding: 4px 14px 16px; display: flex; flex-direction: column }
+.tbody .card { box-shadow: none; background: var(--field) }
+.tbody textarea { box-shadow: none; background: var(--field) }
+@media (prefers-reduced-motion: reduce) { .tchev { transition: none } }
+dialog.sheet { margin: auto auto 0; width: min(560px, 100%); max-width: 100%; border-radius: 28px 28px 0 0; max-height: 82dvh; overflow: auto; animation: sheetup .22s ease-out }
+dialog.sheet::backdrop { background: rgba(8, 12, 18, .45) }
+.grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line); align-self: center; margin-top: -8px }
+@keyframes sheetup { from { transform: translateY(30px); opacity: 0 } to { transform: none; opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { dialog.sheet { animation: none } }
+.tcard.mini.thead { background: var(--surface); border: 2px solid transparent; border-radius: 16px; box-shadow: var(--shadow); padding: 12px 14px; text-align: left }
+.tcard.mini.thead.current { border-color: var(--card-line) }
+a.btn { text-decoration: none; color: inherit; display: inline-block }

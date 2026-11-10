@@ -234,13 +234,13 @@
   }
   function showConversion(total) {
     var base = String(trip.currency || "").toUpperCase(), to = prefs.convert, el = $("hero-conv");
-    var ok = /^[A-Z]{3}$/.test(base) && to && to !== base && total > 0;
+    var ok = /^[A-Z]{3}$/.test(base) && to && to !== base;
     if (ok) loadRates(base);
     var r = ok && rates[base] && rates[base][to];
-    el.hidden = !r;
-    if (r) {
+    el.hidden = !(r || r === 0);
+    if (r || r === 0) {
       var v = total * r;
-      try { $("hero-conv-v").textContent = new Intl.NumberFormat(loc(), { style: "currency", currency: to, maximumFractionDigits: v >= 100 ? 0 : 2 }).format(v); }
+      try { $("hero-conv-v").textContent = new Intl.NumberFormat(loc(), { style: "currency", currency: to, minimumFractionDigits: 0, maximumFractionDigits: v >= 100 ? 0 : 2 }).format(v); }
       catch (e) { $("hero-conv-v").textContent = v.toFixed(2) + " " + to; }
     }
   }
@@ -474,8 +474,109 @@
 
     var ae = document.activeElement, keep = null;
     if (ae && ae.id && ae.tagName === "TEXTAREA" && $("plan-body").contains(ae)) keep = { id: ae.id, v: ae.value, s: ae.selectionStart, e: ae.selectionEnd };
+    if (v === "trip" && lastView !== "trip") loadTripInfos(true);
+    lastView = v;
+    if (v === "trip") renderTripsPage();
+    if ($("sheet").open) renderSheet();
     if (v === "plan") renderPlan(); else if (v === "items") renderItems(); else if (v === "costs") renderCosts(); else renderTrip();
     if (keep) { var el = $(keep.id); if (el) { el.value = keep.v; el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (e) {} } }
+  }
+
+  /* ---------- my trips: list, switch, create, join, leave ---------- */
+  var lastView = null, tripCache = {}, tripFetch = {}, openTrip = null, tripsSig = "";
+  function myTrips() {
+    var l = (profile.trips || []).filter(function (c) { return CODE_RE.test(c); });
+    if (code && l.indexOf(code) < 0) l = l.concat([code]);
+    return l;
+  }
+  function infoFor(c) { return c === code ? { name: trip.name, place: trip.place, start: trip.start, end: trip.end } : (tripCache[c] || {}); }
+  function infoOf(d) { d = d || {}; return { name: d.name || "", place: validPlace(d.place) ? d.place : null, start: d.start, end: d.end }; }
+  function tripTitle(i) { return validPlace(i.place) ? i.place.name : (i.name || t("trip.untitled")); }
+  function tripSub(i) {
+    var out = [];
+    if (validPlace(i.place) && i.name) out.push(i.name);
+    if (isDate(i.start) && isDate(i.end)) out.push(fmtDay(i.start) + " – " + fmtDay(i.end));
+    return out.join(" · ");
+  }
+  function tripFlagHTML(i) {
+    var u = validPlace(i.place) ? flagURL(i.place.cc, 40) : "";
+    return u ? '<img class="tflag flag" src="' + esc(u) + '" alt="" width="34" height="26">' : '<img class="tflag" src="assets/icons/globe.png" alt="" width="34" height="34">';
+  }
+  function col2(c, name) { return fs.collection("trips").doc(c).collection(name); }
+  function loadTripInfos(force) {
+    if (force) tripFetch = {};
+    myTrips().forEach(function (c) {
+      if (c === code || tripFetch[c]) return;
+      tripFetch[c] = 1;
+      col2(c, "trip").doc("main").get().then(function (s) { tripCache[c] = infoOf(s.exists ? s.data() : {}); }, function () { tripCache[c] = tripCache[c] || {}; })
+        .then(function () { tripsSig = ""; if (!$("app").hidden) { if (currentView() === "trip") renderTripsPage(); if ($("sheet").open) renderSheet(); } });
+    });
+  }
+  function saveTrips() { return fs.collection("users").doc(user.uid).set({ trips: profile.trips, updatedAt: Date.now() }, { merge: true }); }
+  function rememberTrip() {
+    var l = (profile.trips || []).filter(function (c) { return CODE_RE.test(c); });
+    if (l.indexOf(code) < 0) { l.push(code); profile.trips = l; saveTrips().catch(function () {}); } else profile.trips = l;
+  }
+  function renderTripsPage() {
+    var list = myTrips(), cards = $("trip-cards"), holder = $("trip-holder"), detail = $("trip-detail");
+    var sig = JSON.stringify([list.map(function (c) { var i = infoFor(c); return [c, i.name, i.place, i.start, i.end]; }), code, openTrip, prefs.lang]);
+    if (sig !== tripsSig) {
+      tripsSig = sig;
+      holder.appendChild(detail);
+      cards.innerHTML = list.map(function (c) {
+        var i = infoFor(c), cur = c === code, open = cur && openTrip === c;
+        return '<div class="tcard' + (cur ? " current" : "") + (open ? " open" : "") + '" data-card="' + esc(c) + '">' +
+          '<button type="button" class="thead" data-tripsel="' + esc(c) + '" aria-expanded="' + open + '">' + tripFlagHTML(i) +
+          '<span class="tt"><b>' + esc(tripTitle(i)) + "</b>" + (tripSub(i) ? "<small>" + esc(tripSub(i)) + "</small>" : "") + "</span>" +
+          (cur ? '<span class="pill">' + esc(t("trips.current")) + "</span>" : "") +
+          '<svg class="tchev" width="12" height="8" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+          '<div class="tbody"' + (open ? "" : " hidden") + "></div></div>";
+      }).join("");
+      var openCard = cards.querySelector(".tcard.open .tbody");
+      if (openCard) openCard.appendChild(detail);
+    }
+    var lv = $("trip-leave"); if (!lv.dataset.armed) lv.textContent = t("trips.leave");
+  }
+  function renderSheet() {
+    $("sheet-list").innerHTML = myTrips().map(function (c) {
+      var i = infoFor(c), cur = c === code;
+      return '<button type="button" class="tcard mini thead' + (cur ? " current" : "") + '" data-sheetsel="' + esc(c) + '">' + tripFlagHTML(i) +
+        '<span class="tt"><b>' + esc(tripTitle(i)) + "</b>" + (tripSub(i) ? "<small>" + esc(tripSub(i)) + "</small>" : "") + "</span>" +
+        (cur ? '<span class="pill">' + esc(t("trips.current")) + "</span>" : "") + "</button>";
+    }).join("");
+  }
+  function openSheet() { loadTripInfos(true); renderSheet(); var d = $("sheet"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+  function closeSheet() { var d = $("sheet"); if (d.open) { if (d.close) d.close(); else d.removeAttribute("open"); } }
+  function switchTo(c, opts) {
+    opts = opts || {};
+    if (c === code) return;
+    closeSheet();
+    if (code && ready.trip) tripCache[code] = infoOf(trip);
+    teardown(); code = c; openTrip = opts.open ? c : null; tripsSig = "";
+    history.replaceState(null, "", location.pathname + "?t=" + c + location.hash);
+    render();
+    join(true, opts.init);
+  }
+  function newTrip() {
+    var cur = trip.currency || "";
+    if (currentView() !== "trip") location.hash = "#trip";
+    switchTo(newCode(), { open: true, init: { currency: cur } });
+  }
+  function joinByCode(v) {
+    var m = String(v || "").match(/[?&]t=([A-Za-z0-9]+)/);
+    if (m) v = m[1];
+    v = String(v || "").trim();
+    if (!CODE_RE.test(v)) return false;
+    if (v !== code) switchTo(v, { open: true });
+    return true;
+  }
+  function leaveCurrent() {
+    var gone = code, rest = myTrips().filter(function (c) { return c !== gone; });
+    profile.trips = rest;
+    saveTrips().catch(function () {});
+    col("members").doc(user.uid).delete().catch(function () {});
+    teardown(); tripsSig = ""; delete tripCache[gone];
+    if (rest.length) { code = null; switchTo(rest[0]); } else leaveTrip();
   }
 
   /* ---------- notes: one write per pause, one at a time per doc ---------- */
@@ -767,6 +868,35 @@
     }).then(function () { delete $("trip-form").dataset.dirty; msg.className = "msg ok"; msg.textContent = t("saved"); selDay = null; })
       .catch(function (err) { msg.textContent = t("e.nosave"); writeFailed(err); }).then(function () { btn.disabled = false; });
   });
+  $("hero-trip").addEventListener("click", openSheet);
+  $("sheet-close").addEventListener("click", closeSheet);
+  $("sheet").addEventListener("click", function (e) {
+    if (e.target === $("sheet")) { closeSheet(); return; }
+    var b = e.target.closest("[data-sheetsel]");
+    if (b) { if (b.dataset.sheetsel === code) closeSheet(); else switchTo(b.dataset.sheetsel); return; }
+    if (e.target.closest("#sheet-manage")) closeSheet();
+  });
+  $("sheet-new").addEventListener("click", function () { closeSheet(); newTrip(); });
+  $("brand").addEventListener("click", function () { if (currentView() === "plan") window.scrollTo(0, 0); });
+  $("trip-cards").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tripsel]"); if (!b) return;
+    var c = b.dataset.tripsel;
+    if (c !== code) { switchTo(c, { open: true }); return; }
+    openTrip = openTrip === c ? null : c; tripsSig = ""; render();
+  });
+  $("trips-new").addEventListener("click", newTrip);
+  $("trips-join").addEventListener("click", function () { var f = $("trips-join-form"); f.hidden = !f.hidden; if (!f.hidden) $("trips-code").focus(); });
+  $("trips-join-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (joinByCode($("trips-code").value)) { $("trips-code").value = ""; $("trips-join-form").hidden = true; $("trips-msg").textContent = ""; }
+    else $("trips-msg").textContent = t("g.bad");
+  });
+  $("trip-leave").addEventListener("click", function () {
+    var b = this;
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = t("trips.leave.confirm"); setTimeout(function () { delete b.dataset.armed; b.textContent = t("trips.leave"); }, 4000); return; }
+    delete b.dataset.armed; leaveCurrent();
+  });
+
   $("t-place").addEventListener("click", openMap);
   $("map-close").addEventListener("click", closeMap);
   $("map-dlg").addEventListener("click", function (e) { if (e.target === $("map-dlg")) closeMap(); });
@@ -851,7 +981,7 @@
   $("set-export").addEventListener("click", exportCsv);
   $("set-copy").addEventListener("click", function () { var b = this; copyText(shareUrl(), function () { b.textContent = t("copied"); setTimeout(function () { b.textContent = t("set.copylink"); }, 1500); }); });
   $("share-copy").addEventListener("click", function () { var b = this; copyText($("share-link").value, function () { b.textContent = t("copied"); setTimeout(function () { b.textContent = t("copy"); }, 1500); }); });
-  $("set-switch").addEventListener("click", function () { closeSettings(); leaveTrip(); });
+  $("set-switch").addEventListener("click", function () { closeSettings(); openSheet(); });
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("[data-signout]")) { closeSettings(); if (auth) auth.signOut(); } });
 
   /* ---------- sign-in, username, join ---------- */
@@ -882,7 +1012,7 @@
   function teardown() {
     unsubs.forEach(function (f) { try { f(); } catch (e) {} }); unsubs = [];
     cancelExtract(); closeDlg(); closeSettings();
-    items = []; trip = {}; dayNotes = {}; members = {}; ready = { items: false, trip: false }; unreachable = false; dead = false; selDay = null; drafts = {};
+    items = []; trip = {}; dayNotes = {}; members = {}; ready = { items: false, trip: false }; unreachable = false; dead = false; selDay = null; drafts = {}; delete $("trip-form").dataset.dirty; placeDraft = null;
   }
   function leaveTrip() {
     teardown(); code = null;
@@ -906,11 +1036,12 @@
   function route() {
     if (!profile.username) { showUsername(""); return; }
     code = getCode();
+    if (!code && profile.trips && profile.trips.length) code = profile.trips[0];
     if (!code) { $("g-hi").textContent = t("g.hi", { name: profile.username }); showGate("trip"); return; }
     join();
   }
-  function join() {
-    showGate("loading");
+  function join(inApp, init) {
+    if (!inApp) showGate("loading");
     col("members").get().then(function (snap) {
       var taken = false, mine = false;
       snap.docs.forEach(function (d) {
@@ -920,7 +1051,9 @@
       if (taken) { showUsername(t("username.taken")); return; }
       var data = { name: profile.username, updatedAt: Date.now() };
       if (!mine) data.joinedAt = Date.now();
-      return col("members").doc(user.uid).set(data, { merge: true }).then(enter);
+      return col("members").doc(user.uid).set(data, { merge: true }).then(function () {
+        if (init) return tdoc("trip/main").set(Object.assign({ name: "", createdAt: Date.now() }, init)).catch(function () {});
+      }).then(function () { rememberTrip(); enter(); });
     }).catch(function () { showGate("error"); });
   }
   function enter() {

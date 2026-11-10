@@ -74,7 +74,7 @@ try {
 <div id="app" hidden>
 <header class="top">
   <div class="wrap topbar">
-    <h1>Binafast</h1>
+    <h1><a href="#plan" id="brand">Binafast</a></h1>
     <div class="right">
       <button class="iconbtn" id="open-settings" type="button" data-i18n-aria="settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn primary" id="add" type="button">+ <span data-i18n="add"></span></button>
@@ -88,7 +88,7 @@ try {
   <section id="v-plan" class="sec" style="gap:16px">
     <div class="hero">
       <img class="hero-cats" src="assets/hero-cats.png" alt="" width="115" height="140">
-      <h2 class="hero-name"><img id="hero-flag" src="assets/icons/globe.png" alt="" width="34" height="34"><span id="hero-name"></span></h2>
+      <h2 class="hero-name"><button type="button" class="hero-trip" id="hero-trip" data-i18n-aria="sheet.title"><img id="hero-flag" src="assets/icons/globe.png" alt="" width="34" height="34"><span id="hero-name"></span><svg class="hchev" width="14" height="9" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h2>
       <p class="hero-dates" id="hero-dates"></p>
       <p class="hero-total num" id="hero-total">0</p>
       <p class="hero-conv" id="hero-conv" hidden><span data-i18n="hero.conv"></span> <b id="hero-conv-v"></b></p>
@@ -118,7 +118,13 @@ try {
 
   <section id="v-costs" class="sec" style="gap:16px" hidden><div id="costs-body" class="sec" style="gap:16px"></div></section>
 
-  <section id="v-trip" class="sec" style="gap:20px" hidden>
+  <section id="v-trip" class="sec" style="gap:14px" hidden>
+    <div id="trip-cards" class="sec" style="gap:12px"></div>
+    <div class="actions"><button class="btn primary" type="button" id="trips-new" data-i18n="trips.new"></button><button class="btn" type="button" id="trips-join" data-i18n="trips.join"></button></div>
+    <form id="trips-join-form" class="inline" hidden novalidate><input id="trips-code" autocomplete="off" autocapitalize="none" spellcheck="false" data-i18n-ph="trips.join.ph"><button class="btn primary" type="submit" data-i18n="trips.join.go"></button></form>
+    <p class="msg err" id="trips-msg" role="alert"></p>
+    <div id="trip-holder" hidden>
+      <div id="trip-detail" class="sec" style="gap:20px">
     <div class="sec">
       <h2 data-i18n="trip.notes"></h2>
       <textarea id="trip-notes" rows="7" data-i18n-ph="trip.notes.ph"></textarea>
@@ -144,6 +150,10 @@ try {
       <p class="note" data-i18n="trip.share.note"></p>
       <div class="share"><input id="share-link" readonly data-i18n-aria="trip.share"><button class="btn" type="button" id="share-copy" data-i18n="copy"></button></div>
     </div>
+  
+        <button class="btn danger" type="button" id="trip-leave" data-i18n="trips.leave"></button>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -155,6 +165,16 @@ try {
 </nav>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
+
+<!-- Bottom sheet: all my trips -->
+<dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+  <div class="dbody">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="head"><h2 id="sheet-title" data-i18n="sheet.title"></h2><button class="btn quiet" id="sheet-close" type="button" data-i18n="close"></button></div>
+    <div id="sheet-list" class="sec" style="gap:10px"></div>
+    <div class="actions"><button class="btn primary" id="sheet-new" type="button" data-i18n="trips.new"></button><a class="btn" href="#trip" id="sheet-manage" data-i18n="trips.manage"></a></div>
+  </div>
+</dialog>
 
 <!-- Choose a location on the map -->
 <dialog id="map-dlg" aria-labelledby="map-title">
