@@ -749,7 +749,7 @@
       if (seq !== xhr.seq) return;
       if (e && e.name === "AbortError" && !timedOut) return;
       var s = e && e.status, k = "smart.fail";
-      if (s === 401 || s === 403) k = "smart.denied"; else if (s === 501) k = "smart.notset"; else if (s === 404 || s === 405) k = "smart.unavailable"; else if (s === 413) k = "smart.toobig"; else if (s === 429) k = "smart.rate";
+      if (s === 401 || s === 403) k = "smart.denied"; else if (s === 501) k = "smart.notset"; else if (s === 404 || s === 405) k = "smart.unavailable"; else if (s === 413) k = "smart.toobig"; else if (s === 422) k = "smart.unreadable"; else if (s === 429) k = "smart.rate";
       setMsg(t(k) + (e && e.detail ? " (" + e.detail + ")" : ""), "err");
     }).then(function () { clearTimeout(to); if (seq === xhr.seq) { xhr.ctl = null; busy = false; updateSmartUI(); } });
   }

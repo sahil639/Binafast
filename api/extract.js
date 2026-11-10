@@ -200,7 +200,7 @@ module.exports = async function handler(req, res) {
         const page = await fetchPage(url.href);
         text = "Page URL: " + page.finalUrl + "\n" + pageText(page.html);
       } catch (e) {
-        if (!img) return res.status(422).json({ error: "unreadable" });
+        if (!img) return res.status(422).json({ error: "unreadable", detail: String((e && e.message) || "").slice(0, 60) });
       }
     }
     if (!img && !text) return res.status(400).json({ error: "empty" });
