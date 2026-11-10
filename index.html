@@ -138,7 +138,6 @@ try {
         <label class="field"><span data-i18n="trip.start"></span><input id="t-start" type="date"></label>
         <label class="field"><span data-i18n="trip.end"></span><input id="t-end" type="date"></label>
       </div>
-      <label class="field"><span data-i18n="trip.cur"></span><select id="t-cur"></select></label>
       <div class="actions"><button class="btn primary" type="submit" id="t-save" data-i18n="trip.save"></button><p class="msg" id="t-msg"></p></div>
     </form>
     <div class="sec card">
@@ -224,8 +223,9 @@ try {
     </div>
     <div class="grid2">
       <label class="field"><span id="l-price"></span><input id="i-price" type="number" inputmode="decimal" min="0" step="any"></label>
-      <label class="field"><span data-i18n="f.status"></span><select id="i-status"></select></label>
+      <label class="field"><span data-i18n="f.cur"></span><select id="i-cur"></select></label>
     </div>
+    <label class="field"><span data-i18n="f.status"></span><select id="i-status"></select></label>
     <label class="field"><span data-i18n="f.notes"></span><textarea id="i-notes" rows="3"></textarea></label>
     <p class="note" id="i-by" hidden></p>
     <p class="msg err" id="i-msg" role="alert"></p>

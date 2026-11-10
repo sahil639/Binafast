@@ -15,7 +15,7 @@
   var CODE_RE = /^[A-Za-z0-9]{16,40}$/;
 
   /* ---------- preferences (this device, mirrored to the account) ---------- */
-  var DEFAULTS = { theme: "system", lang: "en", time: "24", dayStart: 7, dayEnd: 22, showCancelled: true, autoRead: true, convert: "USD" };
+  var DEFAULTS = { theme: "system", lang: "en", time: "24", dayStart: 7, dayEnd: 22, showCancelled: true, autoRead: true, convert: "USD", main: "" };
   function cleanPrefs(p) {
     var o = {}; p = p || {};
     if (["system", "light", "dark"].indexOf(p.theme) >= 0) o.theme = p.theme;
@@ -26,6 +26,7 @@
     if (typeof p.showCancelled === "boolean") o.showCancelled = p.showCancelled;
     if (typeof p.autoRead === "boolean") o.autoRead = p.autoRead;
     if (typeof p.convert === "string" && /^([A-Z]{3})?$/.test(p.convert)) o.convert = p.convert;
+    if (typeof p.main === "string" && /^([A-Z]{3})?$/.test(p.main)) o.main = p.main;
     return o;
   }
   var prefs = (function () {
@@ -91,17 +92,28 @@
     if (prefs.time === "24") return String(h).padStart(2, "0") + ":00";
     var hh = h % 24; return ((hh + 11) % 12 + 1) + " " + (hh < 12 ? "AM" : "PM");
   }
-  function money(n) {
+  /* money: every item keeps the currency it was entered in; each person sees prices in their own main currency */
+  function mainCur() { return String(prefs.main || trip.currency || "USD").toUpperCase(); }
+  function itemCur(it) { return String(it.currency || trip.currency || mainCur()).toUpperCase(); }
+  var fx = null;
+  function convert(amount, from, to) {
+    if (!from || !to || from === to) return amount;
+    if (!fx || !fx[from] || !fx[to]) return null;
+    return amount / fx[from] * fx[to];
+  }
+  function money(n, cur) {
     if (typeof n !== "number" || !isFinite(n)) return "";
-    var cur = (trip.currency || "").toUpperCase();
-    var digits = Math.abs(n % 1) > 0.004 ? 2 : 0;
+    cur = String(cur || mainCur()).toUpperCase();
+    var digits = Math.abs(n) >= 1000 || Math.abs(n % 1) <= 0.004 ? 0 : 2;
     if (/^[A-Z]{3}$/.test(cur)) {
       try { return new Intl.NumberFormat(loc(), { style: "currency", currency: cur, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n); } catch (e) {}
     }
     return n.toLocaleString(loc(), { minimumFractionDigits: digits, maximumFractionDigits: digits }) + (cur ? " " + cur : "");
   }
-  function counts(it) { return it.status !== "cancelled" && typeof it.price === "number"; }
-  function sum(list) { return list.reduce(function (s, it) { return s + (counts(it) ? it.price : 0); }, 0); }
+  function valOf(it) { return typeof it.price === "number" && isFinite(it.price) ? convert(it.price, itemCur(it), mainCur()) : null; }
+  function counts(it) { return it.status !== "cancelled" && valOf(it) !== null; }
+  function sum(list) { return list.reduce(function (s, it) { return s + (counts(it) ? valOf(it) : 0); }, 0); }
+  function needsRates() { return !fx && items.some(function (it) { return typeof it.price === "number" && it.status !== "cancelled" && itemCur(it) !== mainCur(); }); }
   function onDay(it, d) { return it.date === d || (isDate(it.date) && isDate(it.endDate) && it.date <= d && d <= it.endDate); }
   function safeUrl(u) { return typeof u === "string" && /^https?:\/\/\S+$/i.test(u.trim()) ? u.trim() : ""; }
   function hue(s) { var h = 0; s = String(s || "?"); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
@@ -224,37 +236,42 @@
   }
   function closeMap() { var d = $("map-dlg"); if (d.close) d.close(); else d.removeAttribute("open"); }
 
-  /* ---------- currency conversion (free public rates, cached 12h) ---------- */
-  var rates = {};
-  function loadRates(base) {
-    if (rates[base] !== undefined) return;
-    rates[base] = null;
+  /* ---------- exchange rates (free public rates, one USD-based table, cached 12h) ---------- */
+  var fxTried = false;
+  function loadFx() {
+    if (fx || fxTried) return;
+    fxTried = true;
     try {
-      var c = JSON.parse(localStorage.getItem("binafast-rates-" + base) || "null");
-      if (c && Date.now() - c.t < 43200000 && c.r) { rates[base] = c.r; return; }
+      var c = JSON.parse(localStorage.getItem("binafast-fx") || "null");
+      if (c && c.r && Date.now() - c.t < 43200000) { fx = c.r; return; }
+      if (c && c.r) fx = c.r;
     } catch (e) {}
-    fetch("https://open.er-api.com/v6/latest/" + base).then(function (r) { return r.json(); }).then(function (j) {
-      if (j && j.rates) {
-        rates[base] = j.rates;
-        try { localStorage.setItem("binafast-rates-" + base, JSON.stringify({ t: Date.now(), r: j.rates })); } catch (e) {}
+    fetch("https://open.er-api.com/v6/latest/USD").then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.rates && j.rates.USD) {
+        fx = j.rates;
+        try { localStorage.setItem("binafast-fx", JSON.stringify({ t: Date.now(), r: j.rates })); } catch (e) {}
         render();
       }
-    }).catch(function () { delete rates[base]; });
+    }).catch(function () { fxTried = false; setTimeout(function () { if (!fx) loadFx(); }, 60000); });
   }
   function showConversion(total) {
-    var base = String(trip.currency || "").toUpperCase(), to = prefs.convert, el = $("hero-conv");
-    var ok = /^[A-Z]{3}$/.test(base) && to && to !== base;
-    if (ok) loadRates(base);
-    var r = ok && rates[base] && rates[base][to];
-    el.hidden = !(r || r === 0);
-    if (r || r === 0) {
-      var v = total * r;
-      try { $("hero-conv-v").textContent = new Intl.NumberFormat(loc(), { style: "currency", currency: to, minimumFractionDigits: 0, maximumFractionDigits: v >= 100 ? 0 : 2 }).format(v); }
+    var base = mainCur(), to = prefs.convert, el = $("hero-conv");
+    if (to && to !== base) loadFx();
+    var v = to && to !== base ? convert(total, base, to) : null;
+    el.hidden = v === null;
+    if (v !== null) {
+      try { $("hero-conv-v").textContent = new Intl.NumberFormat(loc(), { style: "currency", currency: to, minimumFractionDigits: 0, maximumFractionDigits: Math.abs(v) >= 100 ? 0 : 2 }).format(v); }
       catch (e) { $("hero-conv-v").textContent = v.toFixed(2) + " " + to; }
     }
   }
 
   /* ---------- rows ---------- */
+  function priceHTML(it) {
+    if (typeof it.price !== "number") return "";
+    var own = itemCur(it), v = valOf(it);
+    if (own === mainCur()) return '<span class="price">' + esc(money(it.price, own)) + "</span>";
+    return (v !== null ? '<span class="price">' + esc(money(v)) + "</span>" : "") + '<span class="orig">' + esc(money(it.price, own)) + "</span>";
+  }
   function rowHTML(it, opts) {
     opts = opts || {};
     var catKey = CATS.indexOf(it.category) >= 0 ? it.category : "other";
@@ -284,7 +301,7 @@
       (it.notes ? '<div class="inote">' + esc(it.notes) + "</div>" : "") +
       (opts.showBy ? '<div class="by meta">' + avatar(it.by, memberName(it.by)) + "<span>" + esc(memberName(it.by)) + "</span></div>" : "") +
       "</div>" +
-      '<div class="side">' + (typeof it.price === "number" ? '<span class="price">' + esc(money(it.price)) + "</span>" : "") + sel + "</div></article>";
+      '<div class="side">' + priceHTML(it) + sel + "</div></article>";
   }
   function listHTML(rows, emptyHTML) { return '<div class="list">' + (rows.length ? rows.join("") : '<div class="empty">' + emptyHTML + "</div>") + "</div>"; }
 
@@ -410,7 +427,7 @@
     list.sort(function (a, b) {
       if (so === "name") return String(a.name).localeCompare(String(b.name));
       if (so === "price-asc" || so === "price-desc") {
-        var pa = typeof a.price === "number" ? a.price : hi, pb = typeof b.price === "number" ? b.price : hi;
+        var va = valOf(a), vb = valOf(b), pa = va !== null ? va : hi, pb = vb !== null ? vb : hi;
         if (pa !== pb) return so === "price-asc" ? pa - pb : pb - pa;
         return String(a.name).localeCompare(String(b.name));
       }
@@ -450,7 +467,7 @@
     var f = $("trip-form");
     if (!f.contains(document.activeElement) && !f.dataset.dirty) {
       $("t-name").value = trip.name || ""; $("t-start").value = isDate(trip.start) ? trip.start : "";
-      $("t-end").value = isDate(trip.end) ? trip.end : ""; fillCur($("t-cur"), trip.currency, "—");
+      $("t-end").value = isDate(trip.end) ? trip.end : ""; 
       placeDraft = validPlace(trip.place) ? { name: trip.place.name, cc: trip.place.cc || "", lat: trip.place.lat, lng: trip.place.lng } : null;
     }
     showPlaceField();
@@ -479,6 +496,7 @@
     var b = $("banner");
     if (dead) { b.hidden = false; b.textContent = t("b.dead"); }
     else if (unreachable) { b.hidden = false; b.textContent = t("b.unreachable"); }
+    else if (needsRates()) { loadFx(); b.hidden = !!fx; b.textContent = t("rates.missing"); }
     else b.hidden = true;
 
     var ae = document.activeElement, keep = null;
@@ -567,9 +585,8 @@
     join(true, opts.init);
   }
   function newTrip() {
-    var cur = trip.currency || "";
     if (currentView() !== "trip") location.hash = "#trip";
-    switchTo(newCode(), { open: true, init: { currency: cur } });
+    switchTo(newCode(), { open: true, init: {} });
   }
   function joinByCode(v) {
     var m = String(v || "").match(/[?&]t=([A-Za-z0-9]+)/);
@@ -604,7 +621,7 @@
   /* ---------- add / edit dialog ---------- */
   var editingId = null, editingItem = null, pending = null, existingImg = null, imgRemoved = false;
   var touched = {}, lastLink = "", busy = false, xhr = { ctl: null, seq: 0 };
-  var FORM_IDS = ["i-name", "i-city", "i-mode", "i-from", "i-to", "i-date", "i-end", "i-time", "i-endtime", "i-price", "i-notes"];
+  var FORM_IDS = ["i-cur", "i-name", "i-city", "i-mode", "i-from", "i-to", "i-date", "i-end", "i-time", "i-endtime", "i-price", "i-notes"];
 
   function buildFormOptions() {
     var cur = (document.querySelector('input[name="i-cat"]:checked') || {}).value;
@@ -623,7 +640,7 @@
     $("w-end").hidden = c !== "hotel";
     $("w-time").hidden = c === "hotel";
     $("l-date").textContent = t(c === "hotel" ? "f.checkin" : "f.date");
-    $("l-price").textContent = t(c === "hotel" ? "f.price.stay" : "f.price") + (trip.currency ? " (" + String(trip.currency).toUpperCase() + ")" : "");
+    $("l-price").textContent = t(c === "hotel" ? "f.price.stay" : "f.price");
   }
   function setCat(c) {
     var r = document.querySelector('input[name="i-cat"][value="' + (CATS.indexOf(c) >= 0 ? c : "other") + '"]');
@@ -660,6 +677,7 @@
     $("i-date").value = isDate(d.date) ? d.date : ""; $("i-end").value = isDate(d.endDate) ? d.endDate : "";
     $("i-time").value = d.time || ""; $("i-endtime").value = d.endTime || "";
     $("i-price").value = typeof d.price === "number" ? d.price : "";
+    fillCur($("i-cur"), it ? itemCur(it) : mainCur(), null);
     $("i-status").value = STATUSES.indexOf(d.status) >= 0 ? d.status : "planned";
     $("i-link").value = d.link || ""; $("i-notes").value = d.notes || "";
     $("i-msg").textContent = ""; setMsg("");
@@ -680,7 +698,7 @@
 
   function readForm() {
     var c = catValue(), p = parseFloat($("i-price").value);
-    var o = { name: $("i-name").value.trim(), category: c, status: $("i-status").value, date: $("i-date").value || "", price: isFinite(p) && p >= 0 ? p : null,
+    var o = { name: $("i-name").value.trim(), category: c, status: $("i-status").value, date: $("i-date").value || "", price: isFinite(p) && p >= 0 ? p : null, currency: $("i-cur").value,
       link: $("i-link").value.trim(), notes: $("i-notes").value.trim(), updatedAt: Date.now() };
     if (c === "transport") { o.mode = $("i-mode").value; o.from = $("i-from").value.trim(); o.to = $("i-to").value.trim(); } else o.city = $("i-city").value.trim();
     if (c === "hotel") o.endDate = $("i-end").value || ""; else { o.time = $("i-time").value || ""; o.endTime = o.time ? ($("i-endtime").value || "") : ""; }
@@ -732,7 +750,7 @@
     put("i-price", f.price);
     var notes = typeof f.notes === "string" ? f.notes.trim() : "";
     var cur = typeof f.currency === "string" ? f.currency.toUpperCase() : "";
-    if (cur && trip.currency && cur !== String(trip.currency).toUpperCase() && typeof f.price === "number") notes = (notes ? notes + "\n" : "") + t("smart.curnote", { cur: cur });
+    if (cur && typeof f.price === "number" && /^[A-Z]{3}$/.test(cur) && !touched["i-cur"]) { fillCur($("i-cur"), cur, null); }
     if (notes && !touched["i-notes"] && !$("i-notes").value.trim()) { $("i-notes").value = notes; n++; }
     return n;
   }
@@ -746,7 +764,7 @@
     user.getIdToken().then(function (tok) {
       return fetch("/api/extract", {
         method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
-        body: JSON.stringify({ url: link || undefined, image: pending ? pending.ai : undefined, lang: prefs.lang, today: todayISO(), tripStart: trip.start || null, tripEnd: trip.end || null, currency: trip.currency || null })
+        body: JSON.stringify({ url: link || undefined, image: pending ? pending.ai : undefined, lang: prefs.lang, today: todayISO(), tripStart: trip.start || null, tripEnd: trip.end || null, currency: $("i-cur").value || mainCur() })
       });
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (j) { if (!res.ok) { var e = new Error("http"); e.status = res.status; e.detail = j && j.detail; throw e; } return j; });
@@ -774,7 +792,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-pref]"), function (b) { b.setAttribute("aria-pressed", String(String(prefs[b.dataset.pref]) === b.dataset.val)); });
     $("set-start").innerHTML = hourOptions(0, 12); $("set-end").innerHTML = hourOptions(12, 24);
     $("set-start").value = String(prefs.dayStart); $("set-end").value = String(prefs.dayEnd);
-    fillCur($("set-convert"), prefs.convert, t("set.convert.off")); fillCur($("set-main"), trip.currency, "—"); $("set-main").disabled = !ready.trip; $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
+    fillCur($("set-convert"), prefs.convert, t("set.convert.off")); fillCur($("set-main"), mainCur(), null); $("set-cancelled").checked = !!prefs.showCancelled; $("set-auto").checked = !!prefs.autoRead;
     var name = profile.username || "";
     $("set-av").outerHTML = avatar(user && user.uid, name, "lg").replace('class="av lg"', 'id="set-av" class="av lg"');
     $("set-uname").textContent = name; $("set-email").textContent = user && user.email ? user.email : "";
@@ -820,10 +838,10 @@
     return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
   function exportCsv() {
-    var rows = [[t("f.name"), t("f.cat"), t("f.status"), t("f.date"), t("f.checkout"), t("f.start"), t("f.end"), t("f.city"), t("f.mode"), t("f.from"), t("f.to"), t("f.price"), t("trip.cur"), t("f.link"), t("f.notes"), t("f.by")]];
+    var rows = [[t("f.name"), t("f.cat"), t("f.status"), t("f.date"), t("f.checkout"), t("f.start"), t("f.end"), t("f.city"), t("f.mode"), t("f.from"), t("f.to"), t("f.price"), t("f.cur"), t("f.link"), t("f.notes"), t("f.by")]];
     items.slice().sort(function (a, b) { return String(a.date || "9999") + (a.time || "") < String(b.date || "9999") + (b.time || "") ? -1 : 1; }).forEach(function (it) {
       rows.push([it.name, catName(it.category), stName(it.status), it.date || "", it.endDate || "", it.time || "", it.endTime || "", it.city || "", it.mode ? modeName(it.mode) : "", it.from || "", it.to || "",
-        typeof it.price === "number" ? it.price : "", trip.currency || "", it.link || "", it.notes || "", memberName(it.by)]);
+        typeof it.price === "number" ? it.price : "", typeof it.price === "number" ? itemCur(it) : "", it.link || "", it.notes || "", memberName(it.by)]);
     });
     var blob = new Blob(["﻿" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
@@ -873,7 +891,7 @@
     if (s && en && diffDays(s, en) > 120) { msg.textContent = t("e.long"); return; }
     var btn = $("t-save"); btn.disabled = true;
     chains.trip = (chains.trip || Promise.resolve()).then(function () {
-      return saveTrip({ name: $("t-name").value.trim(), start: s, end: en, currency: $("t-cur").value.trim().toUpperCase(), place: placeDraft });
+      return saveTrip({ name: $("t-name").value.trim(), start: s, end: en, place: placeDraft });
     }).then(function () { delete $("trip-form").dataset.dirty; msg.className = "msg ok"; msg.textContent = t("saved"); selDay = null; })
       .catch(function (err) { msg.textContent = t("e.nosave"); writeFailed(err); }).then(function () { btn.disabled = false; });
   });
@@ -985,11 +1003,8 @@
   $("set-end").addEventListener("change", function () { var v = +this.value; if (v > prefs.dayStart) setPref("dayEnd", v); else renderSettings(); });
   $("set-cancelled").addEventListener("change", function () { setPref("showCancelled", this.checked); });
   $("set-convert").addEventListener("change", function () { setPref("convert", this.value); });
-  $("set-main").addEventListener("change", function () {
-    var v = this.value;
-    if (!ready.trip) return;
-    saveTrip({ currency: v }).catch(writeFailed);
-  });
+  $("set-main").addEventListener("change", function () { setPref("main", this.value); });
+
   $("set-auto").addEventListener("change", function () { setPref("autoRead", this.checked); });
   $("set-name-save").addEventListener("click", changeName);
   $("set-export").addEventListener("click", exportCsv);
@@ -1036,7 +1051,12 @@
     showGate("trip");
   }
   function onAuth(u) {
-    if (!u) { teardown(); user = null; profile = {}; showGate("signin"); return; }
+    if (!u) {
+      teardown(); user = null; profile = {};
+      prefs = Object.assign({}, DEFAULTS, { theme: prefs.theme, lang: prefs.lang });
+      try { localStorage.setItem("binafast-prefs", JSON.stringify(prefs)); } catch (e) {}
+      showGate("signin"); return;
+    }
     user = u; showGate("loading");
     loadProfile();
   }

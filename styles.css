@@ -304,3 +304,4 @@ dialog.sheet::backdrop { background: rgba(8, 12, 18, .45) }
 .tcard.mini.thead { background: var(--surface); border: 2px solid transparent; border-radius: 16px; box-shadow: var(--shadow); padding: 12px 14px; text-align: left }
 .tcard.mini.thead.current { border-color: var(--card-line) }
 a.btn { text-decoration: none; color: inherit; display: inline-block }
+.row .orig { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums }
