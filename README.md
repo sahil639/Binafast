@@ -13,7 +13,7 @@ Edits sync live between everyone who has the trip link.
 
 | Part | What | Cost |
 | --- | --- | --- |
-| Hosting | GitHub Pages serving `index.html` | Free |
+| Hosting | Vercel serving `index.html` | Free |
 | Database | Firebase Cloud Firestore (Spark plan) | Free at this size |
 | Login | None. Each trip has a long random code in its link (`?t=...`); the link is the key | n/a |
 
@@ -32,12 +32,14 @@ Anyone who has the link can view and edit that trip, so share it only with the p
 
 Paste those values into [`config.js`](config.js) and commit. These values are public identifiers, not secrets; the rules decide who can read and write.
 
-### 3. Deploy
+### 3. Deploy on Vercel
 
-**Settings > Pages > Build and deployment > Deploy from a branch**, choose `main` and `/ (root)`, and save.
-After a minute the app is at `https://<your-username>.github.io/Binafast/`.
+1. Go to <https://vercel.com/new> and sign in with GitHub.
+2. Under **Import Git Repository**, find `Binafast` and press **Import**.
+3. Leave everything as it is (Framework Preset: **Other**, no build command) and press **Deploy**.
 
-Any static host works the same way (Netlify, Vercel, Cloudflare Pages): there is nothing to build.
+Vercel gives you an address like `https://binafast.vercel.app` and redeploys on every push to `main`.
+Any other static host works the same way: there is nothing to build.
 
 ### 4. Start a trip
 
