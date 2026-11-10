@@ -72,8 +72,8 @@ h2 { font: 800 19px/1.2 var(--display); margin: 0; letter-spacing: -0.01em; text
 
 /* hero */
 .hero { position: relative; display: flex; flex-direction: column; padding: 9px 4px 0; isolation: isolate }
-.hero::before { content: ""; position: absolute; z-index: -1; right: -16px; top: 118px; width: 188px; aspect-ratio: 564 / 264; opacity: var(--wave-o); background: url("assets/hero-wave.png") center / 100% 100% no-repeat }
-.hero-cats { position: absolute; right: -10px; top: 62px; width: 100px; height: 122px; object-fit: contain; z-index: -1 }
+.hero::before { content: ""; pointer-events: none; position: absolute; z-index: -1; right: -16px; top: 118px; width: 188px; aspect-ratio: 564 / 264; opacity: var(--wave-o); background: url("assets/hero-wave.png") center / 100% 100% no-repeat }
+.hero-cats { pointer-events: none; position: absolute; right: -10px; top: 62px; width: 100px; height: 122px; object-fit: contain; z-index: -1 }
 .hero-name { padding-right: 64px }
 .hero-name { display: flex; align-items: center; gap: 8px; margin: 0; font: 800 28px/1.5 var(--display); letter-spacing: -0.02em; text-wrap: balance }
 .hero-name img { width: 34px; height: 34px; object-fit: contain; flex: none }
@@ -84,7 +84,7 @@ h2 { font: 800 19px/1.2 var(--display); margin: 0; letter-spacing: -0.01em; text
 .hero-conv b { font-weight: 700 }
 
 /* day strip */
-.days { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none }
+.days { position: relative; z-index: 1; display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none }
 .days::-webkit-scrollbar { display: none }
 .day { flex: none; min-width: 82px; border: 0; background: var(--surface); box-shadow: var(--shadow); border-radius: 8px; padding: 5px 8px; text-align: left; line-height: 1.25; display: flex; flex-direction: column; gap: 5px; justify-content: center }
 .day b { display: block; font-weight: 800; font-size: 15px }
