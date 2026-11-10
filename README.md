@@ -1,65 +1,22 @@
 # Binafast
 
-A small shared trip planner for two or three people. One static page, no build step.
+A small collaborative trip planner for 2–3 people. Static site + Firebase (Google sign-in, Firestore) + one Vercel function for AI autofill.
 
-- **Plan**: day-by-day itinerary with that night's hotel, timed items, a day total and day notes
-- **Items**: hotels, food, activities, transport and shopping, with filters (category, status, day) and sorting (date, price, name)
-- **Costs**: trip total, booked vs planned, by category and by day
-- **Trip**: whole-trip notes, trip dates, currency, and the link to share
-
-Edits sync live between everyone who has the trip link.
+## Setup (once)
+1. **Firebase > Authentication > Sign-in method > Google**: enable. Then **Settings > Authorized domains**: add your Vercel domain (e.g. `binafast.vercel.app`).
+2. **Firebase > Firestore Database > Rules**: paste `firestore.rules` and **Publish**.
+3. **AI autofill** (optional): get a free key at https://aistudio.google.com/apikey, then in Vercel > Project > Settings > Environment Variables add `GEMINI_API_KEY`, and redeploy.
+   - Alternative: `ANTHROPIC_API_KEY` (paid). Optional: `GEMINI_MODEL`, `ANTHROPIC_MODEL`, `ALLOWED_EMAILS` (comma-separated; limits who can use autofill).
+4. `config.js` holds your Firebase web config (public by design).
 
 ## How it works
+- Sign in with Google, pick a username, create or join a trip with its link. Only members can read or write the trip.
+- Items are tagged with who added them; the Plan view is an untagged day timeline with blocks sized by duration.
+- Paste a link or add a screenshot in the Add dialog: `/api/extract` reads it (vision model does OCR + structuring) and prefills the form. You review and Save.
+- Settings: theme, language (English / Tiếng Việt), 12/24h, timeline hours, username, CSV export.
 
-| Part | What | Cost |
-| --- | --- | --- |
-| Hosting | Vercel serving `index.html` | Free |
-| Database | Firebase Cloud Firestore (Spark plan) | Free at this size |
-| Login | None. Each trip has a long random code in its link (`?t=...`); the link is the key | n/a |
-
-Anyone who has the link can view and edit that trip, so share it only with the people travelling with you.
-
-## Setup (about 10 minutes, once)
-
-### 1. Create the database
-
-1. Go to <https://console.firebase.google.com> and create a project (Analytics is not needed).
-2. **Build > Firestore Database > Create database**. Pick a region near you and start in production mode.
-3. Open the **Rules** tab, replace the contents with [`firestore.rules`](firestore.rules) from this repo, and press **Publish**.
-4. **Project settings > Your apps > Web (`</>`)**, register an app (no hosting needed), and copy the `firebaseConfig` values.
-
-### 2. Connect the app
-
-Paste those values into [`config.js`](config.js) and commit. These values are public identifiers, not secrets; the rules decide who can read and write.
-
-### 3. Deploy on Vercel
-
-1. Go to <https://vercel.com/new> and sign in with GitHub.
-2. Under **Import Git Repository**, find `Binafast` and press **Import**.
-3. Leave everything as it is (Framework Preset: **Other**, no build command) and press **Deploy**.
-
-Vercel gives you an address like `https://binafast.vercel.app` and redeploys on every push to `main`.
-Any other static host works the same way: there is nothing to build.
-
-### 4. Start a trip
-
-Open the site, press **Start a new trip**, then copy the link from the **Trip** tab and send it to your travel partners. On a phone, use "Add to Home Screen" to keep it handy.
+## Privacy
+Links and screenshots you use with autofill are sent to the AI provider. Gemini's free tier may use content to improve Google products; use a paid key if that matters.
 
 ## Files
-
-- `index.html` - the whole app (markup, styles, script)
-- `config.js` - your Firebase config
-- `firestore.rules` - database access rules to paste into the Firebase console
-- `logo.jpg` - app logo and icon
-
-## Data layout
-
-```
-trips/{tripCode}/items/{itemId}     name, category, status, date, endDate, time, price, city | mode/from/to, link, notes
-trips/{tripCode}/trip/main          name, start, end, currency, notes
-trips/{tripCode}/daynotes/{date}    text
-```
-
-## Not included
-
-Reading details from screenshots or links needs an AI service with a paid key, so it is left out of this version. Everything is entered by hand.
+`index.html`, `styles.css`, `app.js`, `i18n.js`, `config.js`, `api/extract.js`, `firestore.rules`, `vercel.json`.

@@ -1,11 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each trip lives under a long random code. Knowing the code is the key:
-    // anyone with the trip link can read and write that trip, and nobody can list trips.
-    match /trips/{tripId}/{section}/{docId} {
-      allow read, write: if tripId.size() >= 16
-        && section in ['items', 'trip', 'daynotes'];
+    function signedIn() { return request.auth != null; }
+    function isMember(tripId) {
+      return signedIn() && exists(/databases/$(database)/documents/trips/$(tripId)/members/$(request.auth.uid));
+    }
+    function goodTrip(tripId) { return tripId.size() >= 16 && tripId.size() <= 40; }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /trips/{tripId} {
+      match /members/{uid} {
+        allow read: if signedIn() && goodTrip(tripId);
+        allow create, update: if signedIn() && request.auth.uid == uid && goodTrip(tripId);
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
+      match /items/{id} {
+        allow read, delete: if isMember(tripId);
+        allow create: if isMember(tripId) && request.resource.data.by == request.auth.uid;
+        allow update: if isMember(tripId) && (!('by' in resource.data) || request.resource.data.by == resource.data.by);
+      }
+      match /trip/{id} { allow read, write: if isMember(tripId); }
+      match /daynotes/{id} { allow read, write: if isMember(tripId); }
+      match /files/{id} { allow read, write: if isMember(tripId); }
     }
   }
 }
