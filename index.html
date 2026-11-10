@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Binafast</title>
+<link rel="icon" href="logo.jpg">
+<link rel="apple-touch-icon" href="logo.jpg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column. Sticky header (logo, trip, Add) + four tabs; each tab is a plain list of rows. */
+:root {
+  --bg: #f4f7f4; --surface: #ffffff; --ink: #17201a; --muted: #5b6a60; --line: #dde5df;
+  --accent: #1a7f45; --accent-ink: #ffffff; --accent-soft: #e1f2e7;
+  --warn: #b0432c; --warn-soft: #fbe8e3;
+  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1411; --surface: #171f1a; --ink: #e7eee8; --muted: #98a79d; --line: #29342d;
+  --accent: #4fc47d; --accent-ink: #0b1a10; --accent-soft: #1b3224;
+  --warn: #f08e75; --warn-soft: #3a211b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1411; --surface: #171f1a; --ink: #e7eee8; --muted: #98a79d; --line: #29342d;
+  --accent: #4fc47d; --accent-ink: #0b1a10; --accent-soft: #1b3224;
+  --warn: #f08e75; --warn-soft: #3a211b; color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+img { max-width: 100% }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+body { margin: 0 }
+.gate { max-width: 420px; margin: 0 auto; padding-block: 40px; display: flex; flex-direction: column; gap: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.gate img { width: 88px; height: 88px; border-radius: 22px }
+.gate h1 { font: 700 30px/1.1 var(--display); margin: 0 }
+.gate pre { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; overflow-x: auto; font-size: 13px; margin: 0 }
+.share { display: flex; gap: 8px }
+.share input { flex: 1 }
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+button, input, select, textarea { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line) }
+.top .wrap { padding-block: 10px 0; display: flex; flex-direction: column; gap: 8px }
+.brand { display: flex; align-items: center; gap: 10px }
+.brand img { width: 40px; height: 40px; border-radius: 10px; flex: none }
+.brand-text { min-width: 0; flex: 1 }
+.brand h1 { font: 700 20px/1.1 var(--display); margin: 0; letter-spacing: -0.01em }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600 }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+.btn.quiet { background: transparent }
+.btn.danger { color: var(--warn); border-color: var(--warn) }
+.btn:disabled { opacity: .55; cursor: default }
+.tabs { display: flex; gap: 4px }
+.tabs a { flex: 1; text-align: center; padding: 9px 4px; color: var(--muted); text-decoration: none; font-weight: 600; border-bottom: 2px solid transparent }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent) }
+
+main.wrap { padding-block: 16px 48px; display: flex; flex-direction: column; gap: 16px }
+.note { color: var(--muted); font-size: 13px; margin: 0 }
+.banner { background: var(--warn-soft); color: var(--ink); border-radius: var(--r); padding: 10px 12px; font-size: 14px }
+h2 { font: 700 18px/1.2 var(--display); margin: 0; text-wrap: balance }
+.label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap }
+.num { font-variant-numeric: tabular-nums }
+.sec { display: flex; flex-direction: column; gap: 8px }
+
+.days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin }
+.day { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 12px; text-align: left; line-height: 1.2 }
+.day b { display: block; font-weight: 600 }
+.day span { font-size: 12px; color: var(--muted) }
+.day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.day[aria-pressed="true"] span { color: inherit; opacity: .85 }
+.day.today:not([aria-pressed="true"]) { border-color: var(--accent) }
+
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r) }
+.row { display: flex; gap: 10px; padding: 12px; align-items: flex-start; cursor: pointer }
+.row + .row { border-top: 1px solid var(--line) }
+.row .time { flex: none; width: 3.1em; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; padding-top: 2px }
+.row .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.row .name { all: unset; cursor: pointer; font-weight: 600; overflow-wrap: anywhere }
+.row .name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.row .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.row .meta a { color: var(--accent) }
+.row .inote { font-size: 13px; overflow-wrap: anywhere; white-space: pre-wrap }
+.row .side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px }
+.row .price { font-weight: 600; font-variant-numeric: tabular-nums }
+.row.cancelled .name, .row.cancelled .price { text-decoration: line-through; color: var(--muted) }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--accent) }
+select.st { appearance: none; -webkit-appearance: none; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; text-align: center }
+select.st.booked { background: var(--accent-soft); border-color: transparent; color: var(--accent) }
+select.st.done { background: var(--accent); border-color: transparent; color: var(--accent-ink) }
+select.st.cancelled { background: var(--warn-soft); border-color: transparent; color: var(--warn) }
+.empty { padding: 18px 12px; color: var(--muted); text-align: center }
+.empty .btn { margin-top: 10px }
+
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+.field > span { font-size: 12px; font-weight: 600; color: var(--muted) }
+input, select, textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 10px; width: 100%; min-width: 0 }
+textarea { resize: vertical; min-height: 88px; line-height: 1.45 }
+input[type="file"] { padding: 7px }
+
+.total { font: 700 30px/1.1 var(--display); font-variant-numeric: tabular-nums }
+.bars { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px }
+.barrow { display: flex; flex-direction: column; gap: 4px }
+.barrow .head { font-size: 14px }
+.bar { height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px }
+.kv + .kv { border-top: 1px solid var(--line) }
+
+dialog { border: 0; padding: 0; background: var(--surface); color: var(--ink); border-radius: 16px; width: min(560px, calc(100% - 24px)); max-height: 92dvh }
+dialog::backdrop { background: rgba(0, 0, 0, .45) }
+dialog form { display: flex; flex-direction: column; gap: 12px; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) }
+.cats { display: flex; flex-wrap: wrap; gap: 6px }
+.cats label { position: relative }
+.cats input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer }
+.cats span { display: block; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 14px }
+.cats input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.cats input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.actions .spacer { flex: 1 }
+.msg { font-size: 13px; color: var(--muted); margin: 0; min-height: 1.2em }
+.msg.err { color: var(--warn) }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 14px; max-width: calc(100% - 32px); z-index: 20 }
+@media (max-width: 600px) {
+  dialog { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 16px 16px 0 0 }
+}
+</style>
+</head>
+<body>
+
+<section class="gate" id="gate" hidden>
+  <img src="logo.jpg" alt="Binafast logo">
+  <h1>Binafast</h1>
+  <div id="gate-setup" class="sec" hidden>
+    <p>The app is not connected to a database yet. Open <code>config.js</code>, paste your Firebase web app config, and reload. The README has the steps.</p>
+  </div>
+  <div id="gate-join" class="sec" style="gap:16px" hidden>
+    <p class="note" style="font-size:15px">Plan a trip together. Start a new trip, or open one with the link or code someone sent you.</p>
+    <button class="btn primary" type="button" id="g-new">Start a new trip</button>
+    <form id="g-form" class="sec">
+      <label class="field"><span>Trip code or link</span><input id="g-code" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+      <button class="btn" type="submit">Open trip</button>
+      <p class="msg err" id="g-msg"></p>
+    </form>
+  </div>
+</section>
+
+<div id="app" hidden>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <img src="logo.jpg" alt="Binafast logo">
+      <div class="brand-text">
+        <h1>Binafast</h1>
+        <p id="sub">Loading trip…</p>
+      </div>
+      <button class="btn primary" id="add" type="button">Add</button>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#plan">Plan</a>
+      <a href="#items">Items</a>
+      <a href="#costs">Costs</a>
+      <a href="#trip">Trip</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner" hidden></div>
+
+  <section id="v-plan" class="sec" style="gap:16px">
+    <div class="days" id="days" role="group" aria-label="Days"></div>
+    <div id="plan-body" class="sec" style="gap:16px"></div>
+  </section>
+
+  <section id="v-items" class="sec" style="gap:12px" hidden>
+    <div class="filters">
+      <label class="field"><span>Category</span><select id="f-cat-filter"></select></label>
+      <label class="field"><span>Status</span><select id="f-status-filter"></select></label>
+      <label class="field"><span>Day</span><select id="f-day-filter"></select></label>
+      <label class="field"><span>Sort by</span>
+        <select id="f-sort">
+          <option value="date">Date</option>
+          <option value="price-asc">Price, low to high</option>
+          <option value="price-desc">Price, high to low</option>
+          <option value="name">Name</option>
+        </select>
+      </label>
+    </div>
+    <div class="head"><p class="note" id="items-count"></p><p class="note num" id="items-total"></p></div>
+    <div id="items-body"></div>
+  </section>
+
+  <section id="v-costs" class="sec" style="gap:16px" hidden><div id="costs-body" class="sec" style="gap:16px"></div></section>
+
+  <section id="v-trip" class="sec" style="gap:20px" hidden>
+    <div class="sec">
+      <h2>Trip notes</h2>
+      <textarea id="trip-notes" rows="7" placeholder="Visa details, packing list, ideas, anything for the whole trip"></textarea>
+      <p class="msg" id="trip-notes-msg"></p>
+    </div>
+    <form id="trip-form" class="sec" style="gap:12px">
+      <h2>Trip details</h2>
+      <label class="field"><span>Trip name</span><input id="t-name" maxlength="80" placeholder="Where are you going?"></label>
+      <div class="grid2">
+        <label class="field"><span>First day</span><input id="t-start" type="date"></label>
+        <label class="field"><span>Last day</span><input id="t-end" type="date"></label>
+      </div>
+      <label class="field"><span>Currency code</span><input id="t-cur" maxlength="3" placeholder="USD, VND, INR…" autocapitalize="characters"></label>
+      <div class="actions"><button class="btn primary" type="submit" id="t-save">Save details</button><p class="msg" id="t-msg"></p></div>
+    </form>
+    <div class="sec">
+      <h2>Share this trip</h2>
+      <p class="note">Anyone with this link can see and change the trip, so send it only to the people travelling with you.</p>
+      <div class="share"><input id="share-link" readonly aria-label="Trip link"><button class="btn" type="button" id="share-copy">Copy</button></div>
+      <div><button class="btn quiet" type="button" id="leave">Switch to another trip</button></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <form id="item-form" novalidate>
+    <div class="head"><h2 id="dlg-title">Add item</h2><button class="btn quiet" type="button" id="dlg-close">Close</button></div>
+
+
+    <div class="cats" id="i-cats" role="radiogroup" aria-label="Category"></div>
+    <label class="field"><span>Name</span><input id="i-name" maxlength="120" required></label>
+    <label class="field" id="w-city"><span>City or area</span><input id="i-city" maxlength="80"></label>
+    <div id="w-transport" class="sec" style="gap:10px" hidden>
+      <label class="field"><span>Mode</span>
+        <select id="i-mode"><option>Flight</option><option>Train</option><option>Bus</option><option>Cab</option><option>Ferry</option><option>Bike</option><option>Other</option></select>
+      </label>
+      <div class="grid2">
+        <label class="field"><span>From</span><input id="i-from" maxlength="80"></label>
+        <label class="field"><span>To</span><input id="i-to" maxlength="80"></label>
+      </div>
+    </div>
+    <div class="grid2">
+      <label class="field"><span id="l-date">Date</span><input id="i-date" type="date"></label>
+      <label class="field" id="w-time"><span>Time</span><input id="i-time" type="time"></label>
+      <label class="field" id="w-end" hidden><span>Check-out</span><input id="i-end" type="date"></label>
+    </div>
+    <div class="grid2">
+      <label class="field"><span id="l-price">Price</span><input id="i-price" type="number" inputmode="decimal" min="0" step="any"></label>
+      <label class="field"><span>Status</span><select id="i-status"></select></label>
+    </div>
+    <label class="field"><span>Link</span><input id="i-link" type="url" inputmode="url" placeholder="https://"></label>
+    <label class="field"><span>Notes</span><textarea id="i-notes" rows="3"></textarea></label>
+    <p class="msg err" id="i-msg"></p>
+    <div class="actions">
+      <button class="btn danger" type="button" id="i-del" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button class="btn primary" type="submit" id="i-save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CATS = [["hotel", "Hotel"], ["food", "Food"], ["activity", "Activity"], ["transport", "Transport"], ["shopping", "Shopping"], ["other", "Other"]];
+  var STATUSES = [["planned", "Planned"], ["booked", "Booked"], ["done", "Done"], ["cancelled", "Cancelled"]];
+  var CAT_NAME = {}, ST_NAME = {};
+  CATS.forEach(function (c) { CAT_NAME[c[0]] = c[1]; });
+  STATUSES.forEach(function (s) { ST_NAME[s[0]] = s[1]; });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var db = null;
+  var items = [], trip = {}, tripExists = false, dayNotes = {};
+  var ready = { items: false, trip: false };
+  var readOnly = false, unreachable = false, dead = false;
+  var selDay = null, editingId = null;
+  var drafts = {}, timers = {}, chains = {};
+
+  /* ---------- helpers ---------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function isDate(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+  function D(s) { return new Date(s + "T00:00:00Z"); }
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  function addDays(s, n) { var d = D(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
+  function diffDays(a, b) { return Math.round((D(b) - D(a)) / 86400000); }
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function fmtDay(s, long) { return D(s).toLocaleDateString(undefined, long ? { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" } : { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }); }
+  function money(n) {
+    if (typeof n !== "number" || !isFinite(n)) return "";
+    var cur = (trip.currency || "").toUpperCase();
+    var digits = Math.abs(n % 1) > 0.004 ? 2 : 0;
+    if (/^[A-Z]{3}$/.test(cur)) {
+      try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n); } catch (e) {}
+    }
+    return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) + (cur ? " " + cur : "");
+  }
+  function counts(it) { return it.status !== "cancelled" && typeof it.price === "number"; }
+  function sum(list) { return list.reduce(function (t, it) { return t + (counts(it) ? it.price : 0); }, 0); }
+  function onDay(it, d) { return it.date === d || (isDate(it.date) && isDate(it.endDate) && it.date <= d && d <= it.endDate); }
+  function safeUrl(u) { return typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : ""; }
+  function toast(text) {
+    var t = $("toast"); t.textContent = text; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 4000);
+  }
+  function writeFailed(e) {
+    var code = e && e.code;
+    if (code === "permission-denied") toast("The database refused that change. Check the Firestore rules.");
+    else if (code === "resource-exhausted") toast("The trip is full. Delete some items to add more.");
+    else toast("That did not save. Check your connection and try again.");
+  }
+
+  function allDays() {
+    var set = {};
+    if (isDate(trip.start) && isDate(trip.end) && trip.end >= trip.start && diffDays(trip.start, trip.end) <= 120) {
+      for (var d = trip.start; d <= trip.end; d = addDays(d, 1)) set[d] = 1;
+    } else if (isDate(trip.start)) set[trip.start] = 1;
+    items.forEach(function (it) { if (isDate(it.date)) set[it.date] = 1; });
+    Object.keys(dayNotes).forEach(function (d) { if (isDate(d) && dayNotes[d]) set[d] = 1; });
+    return Object.keys(set).sort();
+  }
+  function dayLabel(d, days) {
+    if (isDate(trip.start)) { var n = diffDays(trip.start, d) + 1; return n >= 1 ? "Day " + n : "Before"; }
+    return "Day " + (days.indexOf(d) + 1);
+  }
+
+  /* ---------- row ---------- */
+  function rowHTML(it, opts) {
+    opts = opts || {};
+    var meta = [];
+    if (!opts.hideCat) meta.push(CAT_NAME[it.category] || "Other");
+    if (it.category === "transport") {
+      var route = [it.from, it.to].filter(Boolean).join(" → ");
+      meta.push([it.mode, route].filter(Boolean).join(": "));
+    } else if (it.city) meta.push(it.city);
+    if (opts.showDate) {
+      if (isDate(it.date)) meta.push(fmtDay(it.date) + (isDate(it.endDate) && it.endDate !== it.date ? " – " + fmtDay(it.endDate) : "") + (it.time ? ", " + it.time : ""));
+      else meta.push("No date");
+    }
+    var metaHTML = meta.filter(Boolean).map(esc).join(" · ");
+    var url = safeUrl(it.link);
+    if (url) metaHTML += (metaHTML ? " · " : "") + '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Open link</a>';
+    var st = ST_NAME[it.status] ? it.status : "planned";
+    var sel = '<select class="st ' + st + '" data-status="' + esc(it.id) + '" aria-label="Status of ' + esc(it.name) + '"' + (readOnly ? " disabled" : "") + ">" +
+      STATUSES.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === st ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select>";
+    return '<article class="row' + (st === "cancelled" ? " cancelled" : "") + '" data-edit="' + esc(it.id) + '">' +
+      (opts.time ? '<div class="time">' + esc(it.time || "") + "</div>" : "") +
+      '<div class="body">' +
+        (opts.tag ? '<span class="tag">' + esc(opts.tag) + "</span>" : "") +
+        '<button type="button" class="name">' + esc(it.name || "Untitled") + "</button>" +
+        (metaHTML ? '<div class="meta">' + metaHTML + "</div>" : "") +
+        (it.notes ? '<div class="inote">' + esc(it.notes) + "</div>" : "") +
+      "</div>" +
+      '<div class="side">' + (typeof it.price === "number" ? '<span class="price">' + esc(money(it.price)) + "</span>" : "") + sel + "</div>" +
+    "</article>";
+  }
+  function listHTML(rows, emptyText) { return '<div class="list">' + (rows.length ? rows.join("") : '<div class="empty">' + emptyText + "</div>") + "</div>"; }
+
+  /* ---------- views ---------- */
+  function currentView() { var h = location.hash.replace("#", ""); return ["plan", "items", "costs", "trip"].indexOf(h) >= 0 ? h : "plan"; }
+
+  function renderPlan() {
+    var days = allDays(), today = todayISO();
+    var undated = items.filter(function (it) { return !isDate(it.date); });
+    if (selDay !== "none" && days.indexOf(selDay) < 0) selDay = null;
+    if (selDay === "none" && !undated.length && days.length) selDay = null;
+    if (selDay === null) selDay = days.indexOf(today) >= 0 ? today : (days[0] || "none");
+
+    $("days").innerHTML = days.map(function (d) {
+      return '<button type="button" class="day' + (d === today ? " today" : "") + '" data-day="' + d + '" aria-pressed="' + (d === selDay) + '"><b>' + esc(dayLabel(d, days)) + "</b><span>" + esc(fmtDay(d)) + (d === today ? " · today" : "") + "</span></button>";
+    }).join("") + (undated.length || !days.length ? '<button type="button" class="day" data-day="none" aria-pressed="' + (selDay === "none") + '"><b>No date</b><span>' + undated.length + " item" + (undated.length === 1 ? "" : "s") + "</span></button>" : "");
+
+    var body = $("plan-body");
+    if (!ready.items || !ready.trip) { body.innerHTML = listHTML([], unreachable ? "The trip data can't be reached yet. Still trying." : "Loading…"); return; }
+
+    if (!items.length && !days.length) {
+      body.innerHTML = '<div class="list"><div class="empty"><strong>Nothing planned yet.</strong><br>Set the trip dates to get a day-by-day plan, then add hotels, food, transport and anything you buy.' +
+        (readOnly ? "" : '<br><a class="btn" href="#trip" style="display:inline-block;text-decoration:none;margin-top:10px">Set trip dates</a> <button class="btn primary" type="button" data-add="">Add first item</button>') + "</div></div>";
+      return;
+    }
+    if (selDay === "none") {
+      body.innerHTML = '<div class="sec"><div class="head"><h2>No date yet</h2><span class="num note">' + esc(money(sum(undated))) + "</span></div>" +
+        listHTML(undated.map(function (it) { return rowHTML(it); }), "Everything has a date.") + "</div>";
+      return;
+    }
+    var d = selDay;
+    var hotels = items.filter(function (it) { return it.category === "hotel" && onDay(it, d); });
+    var plan = items.filter(function (it) { return it.category !== "hotel" && onDay(it, d); })
+      .sort(function (a, b) { return (a.time || "99") < (b.time || "99") ? -1 : (a.time || "99") > (b.time || "99") ? 1 : String(a.name).localeCompare(String(b.name)); });
+    var dayCost = sum(items.filter(function (it) { return it.date === d; }));
+    var key = "day:" + d;
+    var noteVal = drafts[key] != null ? drafts[key] : (dayNotes[d] || "");
+    var html = '<div class="head"><h2>' + esc(dayLabel(d, days)) + " · " + esc(fmtDay(d, true)) + '</h2><span class="num note">' + (dayCost ? esc(money(dayCost)) + " this day" : "") + "</span></div>";
+    if (hotels.length) {
+      html += '<div class="sec"><p class="label">Stay</p>' + listHTML(hotels.map(function (it) {
+        var tag = it.date === d ? "Check in" : (it.endDate === d ? "Check out" : "Staying tonight");
+        return rowHTML(it, { tag: tag, hideCat: true });
+      })) + "</div>";
+    }
+    html += '<div class="sec"><p class="label">Plan</p>' + listHTML(plan.map(function (it) { return rowHTML(it, { time: true }); }),
+      "Nothing planned for this day." + (readOnly ? "" : '<br><button class="btn" type="button" data-add="' + d + '">Add to this day</button>')) +
+      (plan.length && !readOnly ? '<div><button class="btn" type="button" data-add="' + d + '">Add to this day</button></div>' : "") + "</div>";
+    html += '<div class="sec"><label class="label" for="dn-' + d + '">Notes for this day</label><textarea id="dn-' + d + '" data-daynote="' + d + '" rows="3" placeholder="Reminders, meeting points, backup plans"' + (readOnly ? " readonly" : "") + ">" + esc(noteVal) + "</textarea></div>";
+    body.innerHTML = html;
+  }
+
+  function fillSelect(el, opts) {
+    var sig = JSON.stringify(opts);
+    if (el.dataset.sig === sig) return;
+    var keep = el.value;
+    el.innerHTML = opts.map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + "</option>"; }).join("");
+    el.dataset.sig = sig;
+    if (opts.some(function (o) { return o[0] === keep; })) el.value = keep;
+  }
+  function renderItems() {
+    var days = allDays();
+    fillSelect($("f-cat-filter"), [["", "All categories"]].concat(CATS));
+    fillSelect($("f-status-filter"), [["", "Any status"], ["active", "Not cancelled"]].concat(STATUSES));
+    fillSelect($("f-day-filter"), [["", "All days"]].concat(days.map(function (d) { return [d, dayLabel(d, days) + " · " + fmtDay(d)]; })).concat([["none", "No date"]]));
+    var fc = $("f-cat-filter").value, fs = $("f-status-filter").value, fd = $("f-day-filter").value, so = $("f-sort").value;
+    var list = items.filter(function (it) {
+      if (fc && (it.category || "other") !== fc) return false;
+      if (fs === "active" ? it.status === "cancelled" : (fs && (it.status || "planned") !== fs)) return false;
+      if (fd === "none" ? isDate(it.date) : (fd && !onDay(it, fd))) return false;
+      return true;
+    });
+    var hi = so === "price-desc" ? -Infinity : Infinity;
+    list.sort(function (a, b) {
+      if (so === "name") return String(a.name).localeCompare(String(b.name));
+      if (so === "price-asc" || so === "price-desc") {
+        var pa = typeof a.price === "number" ? a.price : hi, pb = typeof b.price === "number" ? b.price : hi;
+        if (pa !== pb) return so === "price-asc" ? pa - pb : pb - pa;
+        return String(a.name).localeCompare(String(b.name));
+      }
+      var ka = (isDate(a.date) ? a.date : "9999") + (a.time || "99:99"), kb = (isDate(b.date) ? b.date : "9999") + (b.time || "99:99");
+      return ka < kb ? -1 : ka > kb ? 1 : String(a.name).localeCompare(String(b.name));
+    });
+    $("items-count").textContent = !ready.items ? "" : list.length + " of " + items.length + " item" + (items.length === 1 ? "" : "s");
+    $("items-total").textContent = list.length ? money(sum(list)) + " total" : "";
+    $("items-body").innerHTML = listHTML(list.map(function (it) { return rowHTML(it, { showDate: true }); }),
+      !ready.items ? (unreachable ? "The trip data can't be reached yet. Still trying." : "Loading…") : (items.length ? "No items match these filters." : "No items yet. Use Add to create the first one."));
+  }
+
+  function renderCosts() {
+    var live = items.filter(counts), total = sum(live), days = allDays();
+    var committed = sum(live.filter(function (it) { return it.status === "booked" || it.status === "done"; }));
+    var html = '<div class="sec"><p class="label">Trip total</p><div class="total">' + esc(money(total) || "0") + '</div><p class="note">' +
+      esc(money(committed) || "0") + " booked or done · " + esc(money(total - committed) || "0") + " still only planned. Cancelled items are left out.</p></div>";
+    if (!live.length) { $("costs-body").innerHTML = html + listHTML([], ready.items ? "Add prices to your items to see where the money goes." : "Loading…"); return; }
+    var byCat = CATS.map(function (c) { return [c[1], sum(live.filter(function (it) { return (CAT_NAME[it.category] ? it.category : "other") === c[0]; }))]; })
+      .filter(function (r) { return r[1] > 0; }).sort(function (a, b) { return b[1] - a[1]; });
+    var max = byCat.length ? byCat[0][1] : 1;
+    html += '<div class="sec"><p class="label">By category</p><div class="bars">' + byCat.map(function (r) {
+      return '<div class="barrow"><div class="head"><span>' + esc(r[0]) + '</span><span class="num">' + esc(money(r[1])) + '</span></div><div class="bar"><i style="width:' + Math.max(2, Math.round(r[1] / max * 100)) + '%"></i></div></div>';
+    }).join("") + "</div></div>";
+    var byDay = days.map(function (d) { return [dayLabel(d, days) + " · " + fmtDay(d), sum(live.filter(function (it) { return it.date === d; }))]; }).filter(function (r) { return r[1] > 0; });
+    var und = sum(live.filter(function (it) { return !isDate(it.date); }));
+    if (und) byDay.push(["No date", und]);
+    html += '<div class="sec"><p class="label">By day</p><div class="list">' + byDay.map(function (r) {
+      return '<div class="kv"><span>' + esc(r[0]) + '</span><span class="num">' + esc(money(r[1])) + "</span></div>";
+    }).join("") + '</div><p class="note">A hotel counts on its check-in day.</p></div>';
+    $("costs-body").innerHTML = html;
+  }
+
+  function renderTrip() {
+    var ta = $("trip-notes");
+    if (document.activeElement !== ta) ta.value = drafts.trip != null ? drafts.trip : (trip.notes || "");
+    ta.readOnly = readOnly;
+    var f = $("trip-form");
+    if (!f.contains(document.activeElement) && !f.dataset.dirty) {
+      $("t-name").value = trip.name || ""; $("t-start").value = isDate(trip.start) ? trip.start : "";
+      $("t-end").value = isDate(trip.end) ? trip.end : ""; $("t-cur").value = trip.currency || "";
+    }
+    Array.prototype.forEach.call(f.querySelectorAll("input,button"), function (el) { el.disabled = readOnly; });
+  }
+
+  function render() {
+    var v = currentView();
+    ["plan", "items", "costs", "trip"].forEach(function (n) { $("v-" + n).hidden = n !== v; });
+    Array.prototype.forEach.call(document.querySelectorAll(".tabs a"), function (a) {
+      if (a.getAttribute("href") === "#" + v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    var sub = !ready.trip ? (dead ? "Trip data unavailable" : "Loading trip…") : (trip.name || "Untitled trip");
+    if (ready.trip && isDate(trip.start) && isDate(trip.end)) sub += " · " + fmtDay(trip.start) + " – " + fmtDay(trip.end);
+    $("sub").textContent = sub;
+    $("add").hidden = readOnly || !db;
+    var b = $("banner");
+    if (dead) { b.hidden = false; b.textContent = "The trip can't be loaded. Check your connection and the Firebase setup, then reload."; }
+    else if (readOnly && db) { b.hidden = false; b.textContent = "Changes are not being accepted. Check the Firestore rules in the README."; }
+    else if (unreachable) { b.hidden = false; b.textContent = "The trip data can't be reached yet. What you see may be out of date."; }
+    else b.hidden = true;
+
+    var ae = document.activeElement, keep = null;
+    if (ae && ae.id && ae.tagName === "TEXTAREA" && $("plan-body").contains(ae)) keep = { id: ae.id, v: ae.value, s: ae.selectionStart, e: ae.selectionEnd };
+    if (v === "plan") renderPlan(); else if (v === "items") renderItems(); else if (v === "costs") renderCosts(); else renderTrip();
+    if (keep) { var el = $(keep.id); if (el) { el.value = keep.v; el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (e) {} } }
+  }
+
+  /* ---------- notes: one write per pause, one at a time per doc ---------- */
+  function saveLater(key, fn) {
+    clearTimeout(timers[key]);
+    timers[key] = setTimeout(function () {
+      var sent = drafts[key];
+      chains[key] = (chains[key] || Promise.resolve()).then(function () { return fn(sent); }).then(function () {
+        if (drafts[key] === sent) delete drafts[key];
+        if (key === "trip") $("trip-notes-msg").textContent = "Saved";
+      }).catch(writeFailed);
+    }, 800);
+  }
+  function saveTrip(patch) {
+    var next = Object.assign({}, trip, patch, { updatedAt: Date.now() });
+    return db.doc("trip/main").set(next);
+  }
+
+  /* ---------- item dialog ---------- */
+  function catValue() { var r = document.querySelector('input[name="i-cat"]:checked'); return r ? r.value : "other"; }
+  function syncCatFields() {
+    var c = catValue();
+    $("w-transport").hidden = c !== "transport";
+    $("w-city").hidden = c === "transport";
+    $("w-end").hidden = c !== "hotel";
+    $("w-time").hidden = c === "hotel";
+    $("l-date").textContent = c === "hotel" ? "Check-in" : "Date";
+    $("l-price").textContent = "Price" + (trip.currency ? " (" + String(trip.currency).toUpperCase() + ")" : "") + (c === "hotel" ? ", whole stay" : "");
+  }
+  function setCat(c) {
+    var r = document.querySelector('input[name="i-cat"][value="' + (CAT_NAME[c] ? c : "other") + '"]');
+    if (r) r.checked = true; syncCatFields();
+  }
+  function openItem(id, presetDate) {
+    if (readOnly || !db) return;
+    var it = id ? items.filter(function (x) { return x.id === id; })[0] : null;
+    if (id && !it) return;
+    editingId = it ? it.id : null;
+    $("dlg-title").textContent = it ? "Edit item" : "Add item";
+    it = it || { category: "activity", status: "planned", date: isDate(presetDate) ? presetDate : "" };
+    setCat(it.category);
+    $("i-name").value = it.name || ""; $("i-city").value = it.city || "";
+    $("i-mode").value = it.mode || "Flight"; $("i-from").value = it.from || ""; $("i-to").value = it.to || "";
+    $("i-date").value = isDate(it.date) ? it.date : ""; $("i-end").value = isDate(it.endDate) ? it.endDate : "";
+    $("i-time").value = it.time || ""; $("i-price").value = typeof it.price === "number" ? it.price : "";
+    $("i-status").value = ST_NAME[it.status] ? it.status : "planned";
+    $("i-link").value = it.link || ""; $("i-notes").value = it.notes || "";
+    $("i-msg").textContent = "";
+    var del = $("i-del"); del.hidden = !editingId; del.textContent = "Delete"; del.dataset.armed = "";
+    $("i-save").disabled = false;
+    var dlg = $("dlg");
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
+    if (!editingId) $("i-name").focus();
+  }
+  function closeDlg() { var dlg = $("dlg"); if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); }
+
+  function readForm() {
+    var c = catValue(), p = parseFloat($("i-price").value);
+    var o = {
+      name: $("i-name").value.trim(), category: c, status: $("i-status").value,
+      date: $("i-date").value || "", price: isFinite(p) && p >= 0 ? p : null,
+      link: $("i-link").value.trim(), notes: $("i-notes").value.trim(), updatedAt: Date.now()
+    };
+    if (c === "transport") { o.mode = $("i-mode").value; o.from = $("i-from").value.trim(); o.to = $("i-to").value.trim(); }
+    else o.city = $("i-city").value.trim();
+    if (c === "hotel") o.endDate = $("i-end").value || ""; else o.time = $("i-time").value || "";
+    return o;
+  }
+
+  /* ---------- events ---------- */
+  $("i-cats").innerHTML = CATS.map(function (c) { return '<label><input type="radio" name="i-cat" id="i-cat-' + c[0] + '" value="' + c[0] + '"><span>' + c[1] + "</span></label>"; }).join("");
+  $("i-status").innerHTML = STATUSES.map(function (s) { return '<option value="' + s[0] + '">' + s[1] + "</option>"; }).join("");
+  $("i-cats").addEventListener("change", syncCatFields);
+  $("add").addEventListener("click", function () { openItem(null, currentView() === "plan" && isDate(selDay) ? selDay : ""); });
+  $("dlg-close").addEventListener("click", closeDlg);
+  $("dlg").addEventListener("click", function (e) { if (e.target === $("dlg")) closeDlg(); });
+  $("item-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var o = readForm(), msg = $("i-msg");
+    if (!o.name) { msg.textContent = "Give the item a name."; $("i-name").focus(); return; }
+    if (o.endDate && o.date && o.endDate < o.date) { msg.textContent = "Check-out is before check-in."; return; }
+    if (o.link && !safeUrl(o.link)) { msg.textContent = "The link should start with https://"; return; }
+    var old = editingId ? items.filter(function (x) { return x.id === editingId; })[0] : null;
+    o.createdAt = old && old.createdAt ? old.createdAt : Date.now();
+    var ref = editingId ? db.collection("items").doc(editingId) : db.collection("items").doc();
+    var btn = $("i-save"); btn.disabled = true; msg.textContent = "";
+    ref.set(o).then(function () {
+      if (isDate(o.date) && currentView() === "plan") selDay = o.date;
+      closeDlg(); render();
+    }).catch(function (err) { btn.disabled = false; msg.textContent = "That did not save. Try again."; writeFailed(err); });
+  });
+  $("i-del").addEventListener("click", function () {
+    var b = this;
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; }
+    b.disabled = true;
+    db.collection("items").doc(editingId).delete().then(function () { closeDlg(); }).catch(writeFailed).then(function () { b.disabled = false; });
+  });
+
+  document.querySelector("main").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.closest("a, select, textarea")) return;
+    var add = t.closest("[data-add]"); if (add) { openItem(null, add.dataset.add); return; }
+    var day = t.closest("[data-day]"); if (day) { selDay = day.dataset.day; render(); return; }
+    var row = t.closest("[data-edit]"); if (row) openItem(row.dataset.edit);
+  });
+  document.querySelector("main").addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.status) {
+      var st = t.value;
+      db.collection("items").doc(t.dataset.status).update({ status: st, updatedAt: Date.now() }).catch(writeFailed);
+    } else if (t.closest && t.closest(".filters")) renderItems();
+  });
+  document.querySelector("main").addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.daynote) {
+      var d = t.dataset.daynote, key = "day:" + d;
+      drafts[key] = t.value;
+      saveLater(key, function (text) { return db.doc("daynotes/" + d).set({ text: text, updatedAt: Date.now() }); });
+    } else if (t.id === "trip-notes") {
+      drafts.trip = t.value; $("trip-notes-msg").textContent = "";
+      saveLater("trip", function (text) { return saveTrip({ notes: text }); });
+    } else if (t.closest && t.closest("#trip-form")) $("trip-form").dataset.dirty = "1";
+  });
+  $("trip-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var s = $("t-start").value, en = $("t-end").value, msg = $("t-msg");
+    msg.className = "msg err";
+    if (s && en && en < s) { msg.textContent = "The last day is before the first day."; return; }
+    if (s && en && diffDays(s, en) > 120) { msg.textContent = "Keep the trip to 120 days or fewer."; return; }
+    var btn = $("t-save"); btn.disabled = true;
+    chains.trip = (chains.trip || Promise.resolve()).then(function () {
+      return saveTrip({ name: $("t-name").value.trim(), start: s, end: en, currency: $("t-cur").value.trim().toUpperCase() });
+    }).then(function () { delete $("trip-form").dataset.dirty; msg.className = "msg"; msg.textContent = "Saved"; selDay = null; })
+      .catch(function (err) { msg.textContent = "That did not save."; writeFailed(err); }).then(function () { btn.disabled = false; });
+  });
+  window.addEventListener("hashchange", render);
+
+  /* ---------- data ---------- */
+  var CODE_RE = /^[A-Za-z0-9]{16,40}$/;
+  function getCode() {
+    var c = new URLSearchParams(location.search).get("t");
+    if (c && CODE_RE.test(c)) return c;
+    try { c = localStorage.getItem("binafast-trip"); } catch (e) { c = null; }
+    return c && CODE_RE.test(c) ? c : null;
+  }
+  function goTo(code) {
+    try { if (code) localStorage.setItem("binafast-trip", code); else localStorage.removeItem("binafast-trip"); } catch (e) {}
+    location.href = location.pathname + (code ? "?t=" + code : "");
+  }
+  function newCode() {
+    var abc = "abcdefghijkmnpqrstuvwxyz23456789", a = new Uint8Array(20), out = "";
+    crypto.getRandomValues(a);
+    for (var i = 0; i < a.length; i++) out += abc[a[i] % abc.length];
+    return out;
+  }
+  function shareUrl(code) { return location.origin + location.pathname + "?t=" + code; }
+
+  $("g-new").addEventListener("click", function () { goTo(newCode()); });
+  $("g-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("g-code").value.trim(), m = v.match(/[?&]t=([A-Za-z0-9]+)/);
+    if (m) v = m[1];
+    if (!CODE_RE.test(v)) { $("g-msg").textContent = "That does not look like a trip code. Paste the whole link you were sent."; return; }
+    goTo(v);
+  });
+  $("leave").addEventListener("click", function () { goTo(null); });
+  $("share-copy").addEventListener("click", function () {
+    var inp = $("share-link"), b = this;
+    function done() { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function () { inp.select(); });
+    else inp.select();
+  });
+
+  function start() {
+    var cfg = window.BINAFAST_FIREBASE_CONFIG;
+    var configured = cfg && cfg.projectId && cfg.apiKey && !/^PASTE/.test(cfg.apiKey) && window.firebase;
+    var code = getCode();
+    if (!configured || !code) {
+      $("gate").hidden = false; $("gate-setup").hidden = !!configured; $("gate-join").hidden = !configured;
+      return;
+    }
+    try { localStorage.setItem("binafast-trip", code); } catch (e) {}
+    if (new URLSearchParams(location.search).get("t") !== code) history.replaceState(null, "", location.pathname + "?t=" + code + location.hash);
+    $("app").hidden = false;
+    $("share-link").value = shareUrl(code);
+
+    firebase.initializeApp(cfg);
+    var root = firebase.firestore().collection("trips").doc(code);
+    db = {
+      collection: function (name) { return root.collection(name); },
+      doc: function (path) { var p = path.split("/"); return root.collection(p[0]).doc(p[1]); }
+    };
+    render();
+    var timer = setTimeout(function () { unreachable = true; render(); }, 10000);
+    var fresh = {};
+    function seen(name, snap) { if (!snap.metadata.fromCache) { fresh[name] = 1; if (fresh.items && fresh.trip) { clearTimeout(timer); unreachable = false; } } }
+    function fail() { clearTimeout(timer); unreachable = false; dead = true; ready.items = ready.trip = false; render(); }
+    db.collection("items").onSnapshot(function (snap) {
+      items = snap.docs.map(function (doc) { var o = Object.assign({}, doc.data()); o.id = doc.id; return o; });
+      ready.items = true; seen("items", snap); render();
+    }, fail);
+    db.doc("trip/main").onSnapshot(function (snap) {
+      tripExists = snap.exists; trip = snap.exists ? Object.assign({}, snap.data()) : {};
+      ready.trip = true; seen("trip", snap); render();
+    }, fail);
+    db.collection("daynotes").onSnapshot(function (snap) {
+      var m = {}; snap.docs.forEach(function (doc) { var x = doc.data(); m[doc.id] = x && typeof x.text === "string" ? x.text : ""; });
+      dayNotes = m; render();
+    }, function () {});
+  }
+  start();
+})();
+</script>
+</body>
+</html>

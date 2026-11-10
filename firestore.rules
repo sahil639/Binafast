@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each trip lives under a long random code. Knowing the code is the key:
+    // anyone with the trip link can read and write that trip, and nobody can list trips.
+    match /trips/{tripId}/{section}/{docId} {
+      allow read, write: if tripId.size() >= 16
+        && section in ['items', 'trip', 'daynotes'];
+    }
+  }
+}
