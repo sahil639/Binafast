@@ -170,6 +170,8 @@ window.BINAFAST_I18N = {
     "smart.unreadable": "Couldn't open that link. Many sites (and anything behind a login) block automatic readers. Add a screenshot of the page instead.",
     "smart.fail": "That did not work. Try again, or fill in the details yourself.",
     "smart.badimg": "That image could not be read. Try a different screenshot.",
+    "smart.stay": "{p} per night × {n} nights = {tot}. Check it, then save.",
+    "smart.pernight": "Found a per-night price ({p}). Add check-in and check-out dates and the total updates.",
     "smart.curnote": "Price shown in {cur}, not converted.",
 
     "set.title": "Settings",
@@ -398,6 +400,8 @@ window.BINAFAST_I18N = {
     "smart.unreadable": "Không mở được liên kết này. Nhiều trang web (và trang cần đăng nhập) chặn trình đọc tự động. Hãy thêm ảnh chụp màn hình của trang.",
     "smart.fail": "Chưa được. Hãy thử lại, hoặc tự điền thông tin.",
     "smart.badimg": "Không đọc được ảnh này. Hãy thử ảnh chụp khác.",
+    "smart.stay": "{p} mỗi đêm × {n} đêm = {tot}. Hãy kiểm tra rồi lưu.",
+    "smart.pernight": "Tìm thấy giá mỗi đêm ({p}). Thêm ngày nhận và trả phòng, tổng sẽ tự cập nhật.",
     "smart.curnote": "Giá hiển thị bằng {cur}, chưa quy đổi.",
 
     "set.title": "Cài đặt",

@@ -97,7 +97,7 @@ function buildPrompt(b, kind) {
     "You extract trip-planning details from " + (kind === "image" ? "a screenshot or photo (read all visible text, i.e. do OCR)" : "the text of a web page") + ".",
     "Return ONLY a JSON object. Use only facts that are clearly present; never guess. Omit a field or use null when unknown.",
     "Fields: name (short title of the place/activity/booking), category (one of " + CATS.join(", ") + "), city, date (YYYY-MM-DD), endDate (YYYY-MM-DD, hotels check-out only),",
-    "time (HH:MM 24h start), endTime (HH:MM 24h), price (number, total, no symbols), currency (ISO code like VND, USD), mode (transport only, one of " + MODES.join(", ") + "), from, to (transport only), notes (max 240 chars, useful details such as address, booking reference, opening hours).",
+    "time (HH:MM 24h start), endTime (HH:MM 24h), price (number, the TOTAL for the whole stay/booking if the source states one, no symbols), pricePerNight (number, ONLY when the source states a per-night or per-day rate and no total for the stay; the single-night/day rate, no symbols), currency (ISO code like VND, USD), mode (transport only, one of " + MODES.join(", ") + "), from, to (transport only), notes (max 240 chars, useful details such as address, booking reference, opening hours).",
     "Write name, city and notes in the language they appear in; if you must write free text yourself use " + lang + ".",
     "Today is " + (b.today || "unknown") + (b.tripStart ? "; the trip runs " + b.tripStart + " to " + (b.tripEnd || "?") : "") + ". If a date has no year, pick the year that falls in or after the trip/today.",
     b.currency ? "The trip currency is " + b.currency + "." : ""
@@ -117,6 +117,8 @@ function clean(o) {
   set("time", time(o.time)); set("endTime", time(o.endTime));
   const p = typeof o.price === "number" ? o.price : parseFloat(String(o.price == null ? "" : o.price).replace(/[^\d.]/g, ""));
   if (isFinite(p) && p >= 0 && p < 1e12) f.price = p;
+  const pn = typeof o.pricePerNight === "number" ? o.pricePerNight : parseFloat(String(o.pricePerNight == null ? "" : o.pricePerNight).replace(/[^\d.]/g, ""));
+  if (isFinite(pn) && pn > 0 && pn < 1e12) f.pricePerNight = pn;
   if (typeof o.currency === "string" && /^[A-Za-z]{3}$/.test(o.currency)) f.currency = o.currency.toUpperCase();
   if (MODES.indexOf(o.mode) >= 0) f.mode = o.mode;
   set("from", s(o.from, 80)); set("to", s(o.to, 80)); set("notes", s(o.notes, 300));

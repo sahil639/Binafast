@@ -620,7 +620,7 @@
 
   /* ---------- add / edit dialog ---------- */
   var editingId = null, editingItem = null, pending = null, existingImg = null, imgRemoved = false;
-  var touched = {}, lastLink = "", busy = false, xhr = { ctl: null, seq: 0 };
+  var perNight = null, touched = {}, lastLink = "", busy = false, xhr = { ctl: null, seq: 0 };
   var FORM_IDS = ["i-cur", "i-name", "i-city", "i-mode", "i-from", "i-to", "i-date", "i-end", "i-time", "i-endtime", "i-price", "i-notes"];
 
   function buildFormOptions() {
@@ -681,7 +681,7 @@
     $("i-status").value = STATUSES.indexOf(d.status) >= 0 ? d.status : "planned";
     $("i-link").value = d.link || ""; $("i-notes").value = d.notes || "";
     $("i-msg").textContent = ""; setMsg("");
-    touched = {}; pending = null; existingImg = null; imgRemoved = false; lastLink = safeUrl(d.link) || ""; busy = false;
+    touched = {}; perNight = null; pending = null; existingImg = null; imgRemoved = false; lastLink = safeUrl(d.link) || ""; busy = false;
     setThumb(); updateSmartUI();
     if (it && it.hasImage) {
       col("files").doc(it.id).get().then(function (s) { if (editingId === it.id && s.exists) { existingImg = s.data().data; setThumb(); } }).catch(function () {});
@@ -734,6 +734,20 @@
     }).catch(function () { setMsg(t("smart.badimg"), "err"); });
   }
 
+  /* per-night rate x nights (check-in to check-out) -> total price */
+  function nightsBetween() {
+    var s = $("i-date").value, e = $("i-end").value;
+    if (!s || !e) return 0;
+    var d = Math.round((Date.parse(e) - Date.parse(s)) / 864e5);
+    return d > 0 ? d : 0;
+  }
+  function calcStay() {
+    if (perNight == null) return "";
+    var n = nightsBetween();
+    if (!n) { $("i-price").value = perNight; setMsg(t("smart.pernight", { p: perNight }), "ok"); return; }
+    $("i-price").value = Math.round(perNight * n * 100) / 100;
+    setMsg(t("smart.stay", { p: perNight, n: n, tot: $("i-price").value }), "ok");
+  }
   function applyFields(f) {
     var n = 0;
     function put(id, v) {
@@ -747,7 +761,8 @@
     if (cat === "transport") { if (MODES.indexOf(f.mode) >= 0) put("i-mode", f.mode); put("i-from", f.from); put("i-to", f.to); } else put("i-city", f.city);
     put("i-date", f.date);
     if (cat === "hotel") put("i-end", f.endDate); else { put("i-time", f.time); if (f.time) put("i-endtime", f.endTime); }
-    put("i-price", f.price);
+    if (typeof f.price === "number") { perNight = null; put("i-price", f.price); }
+    else if (typeof f.pricePerNight === "number" && cat === "hotel") { perNight = f.pricePerNight; if (!touched["i-price"]) { n++; calcStay(); } }
     var notes = typeof f.notes === "string" ? f.notes.trim() : "";
     var cur = typeof f.currency === "string" ? f.currency.toUpperCase() : "";
     if (cur && typeof f.price === "number" && /^[A-Z]{3}$/.test(cur) && !touched["i-cur"]) { fillCur($("i-cur"), cur, null); }
@@ -771,6 +786,7 @@
     }).then(function (j) {
       if (seq !== xhr.seq) return;
       var n = applyFields(j && j.fields ? j.fields : {});
+      if (perNight != null && !touched["i-price"] && n) return;
       setMsg(n ? (n === 1 ? t("smart.filled1") : t("smart.filled", { n: n })) : t("smart.none"), n ? "ok" : "");
     }).catch(function (e) {
       if (seq !== xhr.seq) return;
@@ -945,6 +961,7 @@
   $("dlg").addEventListener("close", cancelExtract);
   $("i-cats").addEventListener("change", function () { touched.cat = true; syncCatFields(); });
   FORM_IDS.forEach(function (id) { $(id).addEventListener("input", function () { touched[id] = true; }); });
+  ["i-date", "i-end"].forEach(function (id) { $(id).addEventListener("input", function () { if (perNight != null && !touched["i-price"]) calcStay(); }); });
   $("i-link").addEventListener("paste", function () { setTimeout(maybeAutoLink, 0); });
   $("i-link").addEventListener("change", maybeAutoLink);
   $("i-link").addEventListener("input", updateSmartUI);
